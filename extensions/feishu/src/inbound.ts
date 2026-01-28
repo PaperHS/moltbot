@@ -26,49 +26,52 @@ export function parseFeishuImageContent(content: string): FeishuImageContent | n
 
 /**
  * Extract sender open_id from message event.
+ * SDK v2.0 uses flat structure (no "event" wrapper).
  */
 export function extractSenderId(event: FeishuMessageEvent): string | undefined {
-  return event.event?.sender?.sender_id?.open_id;
+  // v2.0 schema: data.sender.sender_id.open_id
+  // v1.0 schema: data.event.sender.sender_id.open_id
+  return event.sender?.sender_id?.open_id ?? event.event?.sender?.sender_id?.open_id;
 }
 
 /**
  * Extract chat_id from message event.
  */
 export function extractChatId(event: FeishuMessageEvent): string | undefined {
-  return event.event?.message?.chat_id;
+  return event.message?.chat_id ?? event.event?.message?.chat_id;
 }
 
 /**
  * Extract message_id from message event.
  */
 export function extractMessageId(event: FeishuMessageEvent): string | undefined {
-  return event.event?.message?.message_id;
+  return event.message?.message_id ?? event.event?.message?.message_id;
 }
 
 /**
  * Determine if the message is from a private chat (DM).
  */
 export function isPrivateChat(event: FeishuMessageEvent): boolean {
-  return event.event?.message?.chat_type === "p2p";
+  const chatType = event.message?.chat_type ?? event.event?.message?.chat_type;
+  return chatType === "p2p";
 }
 
 /**
  * Determine if the message is from a group chat.
  */
 export function isGroupChat(event: FeishuMessageEvent): boolean {
-  return event.event?.message?.chat_type === "group";
+  const chatType = event.message?.chat_type ?? event.event?.message?.chat_type;
+  return chatType === "group";
 }
 
 /**
  * Check if the bot was mentioned in a group message.
  */
 export function wasBotMentioned(event: FeishuMessageEvent, _appId: string): boolean {
-  const mentions = event.event?.message?.mentions;
+  const mentions = event.message?.mentions ?? event.event?.message?.mentions;
   if (!mentions || mentions.length === 0) return false;
 
   // Check if any mention exists (bot is typically the first @mention in group messages)
-  // The _appId parameter is reserved for future use when we need to verify
-  // the mentioned entity matches the bot's app ID
   for (const mention of mentions) {
     if (mention.id?.open_id) {
       return true;
@@ -91,10 +94,10 @@ export function stripMentionTags(text: string): string {
  * Extract text from message event, stripping mentions.
  */
 export function extractMessageText(event: FeishuMessageEvent): string | null {
-  const content = event.event?.message?.content;
+  const content = event.message?.content ?? event.event?.message?.content;
   if (!content) return null;
 
-  const messageType = event.event?.message?.message_type;
+  const messageType = event.message?.message_type ?? event.event?.message?.message_type;
   if (messageType !== "text") return null;
 
   const parsed = parseFeishuTextContent(content);
@@ -107,10 +110,10 @@ export function extractMessageText(event: FeishuMessageEvent): string | null {
  * Extract image key from message event.
  */
 export function extractImageKey(event: FeishuMessageEvent): string | null {
-  const content = event.event?.message?.content;
+  const content = event.message?.content ?? event.event?.message?.content;
   if (!content) return null;
 
-  const messageType = event.event?.message?.message_type;
+  const messageType = event.message?.message_type ?? event.event?.message?.message_type;
   if (messageType !== "image") return null;
 
   const parsed = parseFeishuImageContent(content);

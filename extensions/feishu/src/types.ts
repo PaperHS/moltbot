@@ -11,10 +11,59 @@ export type FeishuCredentials = {
 export type FeishuMode = "websocket" | "webhook";
 
 /**
+ * Feishu message sender info
+ */
+type FeishuSender = {
+  sender_id?: {
+    open_id?: string;
+    user_id?: string | null;
+    union_id?: string;
+  };
+  sender_type?: string;
+  tenant_key?: string;
+};
+
+/**
+ * Feishu message info
+ */
+type FeishuMessage = {
+  message_id?: string;
+  root_id?: string;
+  parent_id?: string;
+  create_time?: string;
+  update_time?: string;
+  chat_id?: string;
+  chat_type?: string; // "p2p" | "group"
+  message_type?: string; // "text" | "image" | "post" | etc.
+  content?: string; // JSON string
+  mentions?: Array<{
+    key?: string;
+    id?: {
+      open_id?: string;
+      user_id?: string;
+      union_id?: string;
+    };
+    name?: string;
+    tenant_key?: string;
+  }>;
+};
+
+/**
  * Feishu message event from im.message.receive_v1
+ * Supports both v1.0 (with event wrapper) and v2.0 (flat) schemas.
  */
 export type FeishuMessageEvent = {
   schema?: string;
+  event_id?: string;
+  event_type?: string;
+  create_time?: string;
+  token?: string;
+  app_id?: string;
+  tenant_key?: string;
+  // v2.0 flat structure
+  sender?: FeishuSender;
+  message?: FeishuMessage;
+  // v1.0 structure (with event wrapper)
   header?: {
     event_id?: string;
     event_type?: string;
@@ -24,36 +73,8 @@ export type FeishuMessageEvent = {
     tenant_key?: string;
   };
   event?: {
-    sender?: {
-      sender_id?: {
-        open_id?: string;
-        user_id?: string;
-        union_id?: string;
-      };
-      sender_type?: string;
-      tenant_key?: string;
-    };
-    message?: {
-      message_id?: string;
-      root_id?: string;
-      parent_id?: string;
-      create_time?: string;
-      update_time?: string;
-      chat_id?: string;
-      chat_type?: string; // "p2p" | "group"
-      message_type?: string; // "text" | "image" | "post" | etc.
-      content?: string; // JSON string
-      mentions?: Array<{
-        key?: string;
-        id?: {
-          open_id?: string;
-          user_id?: string;
-          union_id?: string;
-        };
-        name?: string;
-        tenant_key?: string;
-      }>;
-    };
+    sender?: FeishuSender;
+    message?: FeishuMessage;
   };
 };
 
