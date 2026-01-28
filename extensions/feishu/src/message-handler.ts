@@ -12,7 +12,7 @@ import {
   isGroupChat,
   wasBotMentioned,
 } from "./inbound.js";
-import { downloadFeishuImage, sendFeishuText } from "./send.js";
+import { downloadFeishuImage, sendFeishuText, uploadFeishuImage, sendFeishuImage } from "./send.js";
 import { getFeishuRuntime } from "./runtime.js";
 
 export type HandleFeishuMessageOpts = {
@@ -183,9 +183,27 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
           await sendFeishuText({ cfg, to: replyTo, text: chunk });
         }
       }
-      // Send media URL as text (Feishu image upload would require separate implementation)
+      // Send media: download from URL, upload to Feishu, then send as image
       if (payload.mediaUrl) {
-        await sendFeishuText({ cfg, to: replyTo, text: payload.mediaUrl });
+        try {
+          console.log("[feishu] downloading media from URL:", payload.mediaUrl);
+          const response = await fetch(payload.mediaUrl);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch media: ${response.status}`);
+          }
+          const arrayBuffer = await response.arrayBuffer();
+          const imageBuffer = Buffer.from(arrayBuffer);
+
+          console.log("[feishu] uploading image to Feishu, size:", imageBuffer.length);
+          const imageKey = await uploadFeishuImage({ cfg, image: imageBuffer });
+
+          console.log("[feishu] sending image with key:", imageKey);
+          await sendFeishuImage({ cfg, to: replyTo, imageKey });
+        } catch (err) {
+          // Fallback: send URL as text if image upload fails
+          console.error("[feishu] failed to send image, falling back to URL:", err);
+          await sendFeishuText({ cfg, to: replyTo, text: `[Image] ${payload.mediaUrl}` });
+        }
       }
     },
     onError: (err, info) => {
