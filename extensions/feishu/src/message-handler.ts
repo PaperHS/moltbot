@@ -191,8 +191,12 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
       },
     });
   } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    const errorStack = err instanceof Error ? err.stack : undefined;
+    console.error("[feishu] dispatch error:", errorMsg, errorStack);
     log.error("failed to dispatch reply", {
-      error: err instanceof Error ? err.message : String(err),
+      error: errorMsg,
+      stack: errorStack,
       senderId,
       chatId,
     });
