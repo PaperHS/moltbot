@@ -188,6 +188,151 @@ export async function uploadFeishuImage(params: {
 }
 
 /**
+ * Upload a file to Feishu and get the file_key.
+ */
+export async function uploadFeishuFile(params: {
+  cfg: ClawdbotConfig;
+  file: Buffer;
+  fileName: string;
+  fileType: "opus" | "mp4" | "pdf" | "doc" | "xls" | "ppt" | "stream";
+}): Promise<string> {
+  const { cfg, file, fileName, fileType } = params;
+  const feishuCfg = cfg.channels?.feishu;
+  const credentials = resolveFeishuCredentials(feishuCfg);
+
+  if (!credentials) {
+    throw new Error("Feishu credentials not configured");
+  }
+
+  const client = getFeishuClient(credentials);
+
+  const response = await client.im.file.create({
+    data: {
+      file_type: fileType,
+      file_name: fileName,
+      file: Buffer.from(file),
+    },
+  });
+
+  if (response.code !== 0) {
+    throw new Error(`Feishu file upload failed: ${response.msg} (code: ${response.code})`);
+  }
+
+  const fileKey = response.data?.file_key;
+  if (!fileKey) {
+    throw new Error("Feishu file upload returned no file_key");
+  }
+
+  return fileKey;
+}
+
+/**
+ * Send a file message via Feishu API.
+ */
+export async function sendFeishuFile(params: {
+  cfg: ClawdbotConfig;
+  to: string;
+  fileKey: string;
+  replyToMessageId?: string;
+}): Promise<FeishuSendResult> {
+  const { cfg, to, fileKey, replyToMessageId } = params;
+  const feishuCfg = cfg.channels?.feishu;
+  const credentials = resolveFeishuCredentials(feishuCfg);
+
+  if (!credentials) {
+    throw new Error("Feishu credentials not configured");
+  }
+
+  const client = getFeishuClient(credentials);
+  const receiveIdType = resolveReceiveIdType(to);
+
+  const content = JSON.stringify({ file_key: fileKey });
+
+  const response = await client.im.message.create({
+    params: {
+      receive_id_type: receiveIdType,
+    },
+    data: {
+      receive_id: to,
+      msg_type: "file",
+      content,
+      ...(replyToMessageId ? { reply_in_thread: false } : {}),
+    },
+  });
+
+  if (response.code !== 0) {
+    throw new Error(`Feishu file send failed: ${response.msg} (code: ${response.code})`);
+  }
+
+  const messageId = response.data?.message_id ?? "unknown";
+  const chatId = response.data?.chat_id ?? to;
+
+  return { messageId, chatId };
+}
+
+/**
+ * Detect file type from URL or content-type header.
+ */
+export function detectFeishuFileType(
+  url: string,
+  contentType?: string,
+): { isImage: boolean; fileType: "opus" | "mp4" | "pdf" | "doc" | "xls" | "ppt" | "stream"; fileName: string } {
+  const urlLower = url.toLowerCase();
+  const ext = urlLower.split(".").pop()?.split("?")[0] ?? "";
+
+  // Check content-type first
+  if (contentType) {
+    if (contentType.startsWith("image/")) {
+      return { isImage: true, fileType: "stream", fileName: `image.${ext || "png"}` };
+    }
+    if (contentType.includes("pdf")) {
+      return { isImage: false, fileType: "pdf", fileName: `file.pdf` };
+    }
+    if (contentType.includes("audio")) {
+      return { isImage: false, fileType: "opus", fileName: `audio.${ext || "opus"}` };
+    }
+    if (contentType.includes("video") || contentType.includes("mp4")) {
+      return { isImage: false, fileType: "mp4", fileName: `video.mp4` };
+    }
+    if (contentType.includes("word") || contentType.includes("document")) {
+      return { isImage: false, fileType: "doc", fileName: `document.docx` };
+    }
+    if (contentType.includes("excel") || contentType.includes("spreadsheet")) {
+      return { isImage: false, fileType: "xls", fileName: `spreadsheet.xlsx` };
+    }
+    if (contentType.includes("powerpoint") || contentType.includes("presentation")) {
+      return { isImage: false, fileType: "ppt", fileName: `presentation.pptx` };
+    }
+  }
+
+  // Fallback to extension detection
+  const imageExts = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "ico", "svg"];
+  if (imageExts.includes(ext)) {
+    return { isImage: true, fileType: "stream", fileName: `image.${ext}` };
+  }
+
+  const fileTypeMap: Record<string, "opus" | "mp4" | "pdf" | "doc" | "xls" | "ppt" | "stream"> = {
+    pdf: "pdf",
+    doc: "doc",
+    docx: "doc",
+    xls: "xls",
+    xlsx: "xls",
+    ppt: "ppt",
+    pptx: "ppt",
+    mp4: "mp4",
+    opus: "opus",
+    ogg: "opus",
+    mp3: "opus",
+    wav: "opus",
+  };
+
+  const fileType = fileTypeMap[ext] ?? "stream";
+  const fileName = url.split("/").pop()?.split("?")[0] ?? `file.${ext || "bin"}`;
+
+  return { isImage: false, fileType, fileName };
+}
+
+/**
  * Download an image from Feishu.
  */
 export async function downloadFeishuImage(params: {

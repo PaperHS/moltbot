@@ -12,7 +12,15 @@ import {
   isGroupChat,
   wasBotMentioned,
 } from "./inbound.js";
-import { downloadFeishuImage, sendFeishuText, uploadFeishuImage, sendFeishuImage } from "./send.js";
+import {
+  downloadFeishuImage,
+  sendFeishuText,
+  uploadFeishuImage,
+  sendFeishuImage,
+  uploadFeishuFile,
+  sendFeishuFile,
+  detectFeishuFileType,
+} from "./send.js";
 import { getFeishuRuntime } from "./runtime.js";
 
 export type HandleFeishuMessageOpts = {
@@ -183,7 +191,7 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
           await sendFeishuText({ cfg, to: replyTo, text: chunk });
         }
       }
-      // Send media: download from URL, upload to Feishu, then send as image
+      // Send media: download from URL, detect type, upload to Feishu, then send
       if (payload.mediaUrl) {
         try {
           console.log("[feishu] downloading media from URL:", payload.mediaUrl);
@@ -191,18 +199,30 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
           if (!response.ok) {
             throw new Error(`Failed to fetch media: ${response.status}`);
           }
+
+          const contentType = response.headers.get("content-type") ?? undefined;
+          const { isImage, fileType, fileName } = detectFeishuFileType(payload.mediaUrl, contentType);
+          console.log("[feishu] detected media type:", { isImage, fileType, fileName, contentType });
+
           const arrayBuffer = await response.arrayBuffer();
-          const imageBuffer = Buffer.from(arrayBuffer);
+          const fileBuffer = Buffer.from(arrayBuffer);
+          console.log("[feishu] downloaded media, size:", fileBuffer.length);
 
-          console.log("[feishu] uploading image to Feishu, size:", imageBuffer.length);
-          const imageKey = await uploadFeishuImage({ cfg, image: imageBuffer });
-
-          console.log("[feishu] sending image with key:", imageKey);
-          await sendFeishuImage({ cfg, to: replyTo, imageKey });
+          if (isImage) {
+            // Upload and send as image
+            const imageKey = await uploadFeishuImage({ cfg, image: fileBuffer });
+            console.log("[feishu] sending image with key:", imageKey);
+            await sendFeishuImage({ cfg, to: replyTo, imageKey });
+          } else {
+            // Upload and send as file
+            const fileKey = await uploadFeishuFile({ cfg, file: fileBuffer, fileName, fileType });
+            console.log("[feishu] sending file with key:", fileKey);
+            await sendFeishuFile({ cfg, to: replyTo, fileKey });
+          }
         } catch (err) {
-          // Fallback: send URL as text if image upload fails
-          console.error("[feishu] failed to send image, falling back to URL:", err);
-          await sendFeishuText({ cfg, to: replyTo, text: `[Image] ${payload.mediaUrl}` });
+          // Fallback: send URL as text if upload fails
+          console.error("[feishu] failed to send media, falling back to URL:", err);
+          await sendFeishuText({ cfg, to: replyTo, text: `[Media] ${payload.mediaUrl}` });
         }
       }
     },
