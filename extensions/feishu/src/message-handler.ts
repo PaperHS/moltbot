@@ -1,6 +1,5 @@
 import type * as lark from "@larksuiteoapi/node-sdk";
-import { dispatchReplyFromConfig, type ClawdbotConfig, type RuntimeEnv } from "clawdbot/plugin-sdk";
-import type { Logger } from "clawdbot/plugin-sdk";
+import type { ClawdbotConfig, RuntimeEnv, Logger } from "clawdbot/plugin-sdk";
 
 import type { FeishuMessageEvent } from "./types.js";
 import {
@@ -163,7 +162,7 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
   const textLimit = core.channel.text.resolveTextChunkLimit(cfg, "feishu");
 
   try {
-    await dispatchReplyFromConfig({
+    await core.channel.reply.dispatchReplyFromConfig({
       cfg,
       channel: "feishu",
       senderId,
