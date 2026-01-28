@@ -2,7 +2,7 @@ import type * as lark from "@larksuiteoapi/node-sdk";
 import type { ClawdbotConfig, RuntimeEnv } from "clawdbot/plugin-sdk";
 import type { Logger } from "clawdbot/plugin-sdk";
 
-import { createFeishuWsClient, createFeishuClient } from "./client.js";
+import { createFeishuWsClient, createFeishuClient, createFeishuEventDispatcher } from "./client.js";
 import { resolveFeishuCredentials } from "./credentials.js";
 import type { FeishuMessageEvent } from "./types.js";
 import { handleFeishuMessage } from "./message-handler.js";
@@ -31,33 +31,39 @@ export async function monitorFeishuWs(opts: MonitorFeishuWsOpts): Promise<Monito
     throw new Error("Feishu credentials not configured");
   }
 
-  const wsClient = createFeishuWsClient(credentials);
   const client = createFeishuClient(credentials);
 
-  // Register message event handler
-  wsClient.on("im.message.receive_v1", async (data: FeishuMessageEvent) => {
-    log.debug("received message event", {
-      messageId: data.event?.message?.message_id,
-      chatType: data.event?.message?.chat_type,
-      messageType: data.event?.message?.message_type,
-    });
+  // Create event dispatcher and register message handler
+  const eventDispatcher = createFeishuEventDispatcher();
 
-    try {
-      await handleFeishuMessage({
-        cfg,
-        runtime,
-        log,
-        event: data,
-        client,
-        appId: credentials.appId,
-      });
-    } catch (err) {
-      log.error("failed to handle message", {
-        error: err instanceof Error ? err.message : String(err),
+  eventDispatcher.register({
+    "im.message.receive_v1": async (data: FeishuMessageEvent) => {
+      log.debug("received message event", {
         messageId: data.event?.message?.message_id,
+        chatType: data.event?.message?.chat_type,
+        messageType: data.event?.message?.message_type,
       });
-    }
+
+      try {
+        await handleFeishuMessage({
+          cfg,
+          runtime,
+          log,
+          event: data,
+          client,
+          appId: credentials.appId,
+        });
+      } catch (err) {
+        log.error("failed to handle message", {
+          error: err instanceof Error ? err.message : String(err),
+          messageId: data.event?.message?.message_id,
+        });
+      }
+    },
   });
+
+  // Create WebSocket client with event dispatcher
+  const wsClient = createFeishuWsClient(credentials, eventDispatcher);
 
   // Start WebSocket connection
   log.info("starting WebSocket connection");
