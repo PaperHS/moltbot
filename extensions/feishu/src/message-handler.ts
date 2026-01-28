@@ -175,30 +175,29 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
       : {}),
   });
 
-  // Create dispatcher
-  const dispatcher = {
-    deliverFinal: async (payload: { text?: string; mediaUrl?: string }) => {
+  // Create dispatcher using the proper reply dispatcher pattern
+  const { dispatcher } = core.channel.reply.createReplyDispatcherWithTyping({
+    deliver: async (payload) => {
+      // Send text content
       if (payload.text) {
         const chunks = core.channel.text.chunkMarkdownText(payload.text, textLimit);
         for (const chunk of chunks) {
           await sendFeishuText({ cfg, to: replyTo, text: chunk });
         }
       }
+      // Send media URL as text (Feishu image upload would require separate implementation)
       if (payload.mediaUrl) {
         await sendFeishuText({ cfg, to: replyTo, text: payload.mediaUrl });
       }
     },
-    deliverBlock: async (payload: { text?: string }) => {
-      if (payload.text) {
-        await sendFeishuText({ cfg, to: replyTo, text: payload.text });
-      }
+    onError: (err, info) => {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      log.error("reply delivery failed", {
+        kind: info.kind,
+        error: errorMsg,
+      });
     },
-    deliverTool: async (payload: { text?: string }) => {
-      if (payload.text) {
-        await sendFeishuText({ cfg, to: replyTo, text: payload.text });
-      }
-    },
-  };
+  });
 
   try {
     const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
