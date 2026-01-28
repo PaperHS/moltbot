@@ -40,12 +40,8 @@ export async function monitorFeishuWs(opts: MonitorFeishuWsOpts): Promise<Monito
     "im.message.receive_v1": async (data: FeishuMessageEvent) => {
       // Log raw event structure for debugging
       console.log("[feishu] RAW EVENT:", JSON.stringify(data, null, 2));
-      log.debug("received message event", {
-        messageId: data.event?.message?.message_id,
-        chatType: data.event?.message?.chat_type,
-        messageType: data.event?.message?.message_type,
-      });
 
+      console.log("[feishu] calling handleFeishuMessage...");
       try {
         await handleFeishuMessage({
           cfg,
@@ -55,10 +51,13 @@ export async function monitorFeishuWs(opts: MonitorFeishuWsOpts): Promise<Monito
           client,
           appId: credentials.appId,
         });
+        console.log("[feishu] handleFeishuMessage completed");
       } catch (err) {
+        console.error("[feishu] handleFeishuMessage ERROR:", err instanceof Error ? err.message : String(err));
+        console.error("[feishu] stack:", err instanceof Error ? err.stack : "no stack");
         log.error("failed to handle message", {
           error: err instanceof Error ? err.message : String(err),
-          messageId: data.event?.message?.message_id,
+          messageId: data.message?.message_id ?? data.event?.message?.message_id,
         });
       }
     },

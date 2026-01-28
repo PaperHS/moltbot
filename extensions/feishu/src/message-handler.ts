@@ -74,11 +74,16 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
   const { cfg, log, event, appId } = opts;
   const feishuCfg = cfg.channels?.feishu;
 
+  console.log("[feishu] handleFeishuMessage called");
+
   const senderId = extractSenderId(event);
   const chatId = extractChatId(event);
   const messageId = extractMessageId(event);
 
+  console.log("[feishu] extracted IDs:", { senderId, chatId, messageId });
+
   if (!senderId || !chatId || !messageId) {
+    console.log("[feishu] missing required fields, skipping");
     log.debug("missing required fields, skipping message");
     return;
   }
@@ -86,26 +91,23 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
   const isPrivate = isPrivateChat(event);
   const isGroup = isGroupChat(event);
 
-  log.debug("processing message", {
-    senderId,
-    chatId,
-    messageId,
-    isPrivate,
-    isGroup,
-  });
+  console.log("[feishu] chat type:", { isPrivate, isGroup });
 
   // Check if bot was mentioned in group (if required)
   if (isGroup && feishuCfg?.requireMention !== false) {
-    if (!wasBotMentioned(event, appId)) {
-      log.debug("bot not mentioned in group, skipping");
+    const mentioned = wasBotMentioned(event, appId);
+    console.log("[feishu] requireMention check:", { requireMention: feishuCfg?.requireMention, mentioned });
+    if (!mentioned) {
+      console.log("[feishu] bot not mentioned in group, skipping");
       return;
     }
   }
 
   // Check allowlist
   const { allowed, reason } = isAllowed({ cfg, senderId, chatId, isPrivate });
+  console.log("[feishu] allowlist check:", { allowed, reason, groupPolicy: feishuCfg?.groupPolicy });
   if (!allowed) {
-    log.debug("sender not allowed", { senderId, chatId, reason });
+    console.log("[feishu] sender not allowed:", reason);
     return;
   }
 
@@ -113,18 +115,14 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
   const text = extractMessageText(event);
   const imageKey = extractImageKey(event);
 
+  console.log("[feishu] extracted content:", { text, imageKey });
+
   if (!text && !imageKey) {
-    log.debug("no text or image content, skipping");
+    console.log("[feishu] no text or image content, skipping");
     return;
   }
 
-  log.info("handling message", {
-    senderId,
-    chatId,
-    messageId,
-    hasText: Boolean(text),
-    hasImage: Boolean(imageKey),
-  });
+  console.log("[feishu] handling message:", { senderId, chatId, messageId, hasText: Boolean(text), hasImage: Boolean(imageKey) });
 
   // Handle image if present
   let imageBuffer: Buffer | undefined;
