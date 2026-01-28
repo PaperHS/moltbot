@@ -62,12 +62,12 @@ export async function monitorFeishuWs(opts: MonitorFeishuWsOpts): Promise<Monito
     },
   });
 
-  // Create WebSocket client with event dispatcher
-  const wsClient = createFeishuWsClient(credentials, eventDispatcher);
+  // Create WebSocket client
+  const wsClient = createFeishuWsClient(credentials);
 
-  // Start WebSocket connection
+  // Start WebSocket connection with event dispatcher
   log.info("starting WebSocket connection");
-  await wsClient.start();
+  await wsClient.start({ eventDispatcher });
 
   const shutdown = async () => {
     log.info("shutting down WebSocket connection");

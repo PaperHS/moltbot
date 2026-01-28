@@ -43,17 +43,12 @@ export function createFeishuClient(credentials: FeishuCredentials): lark.Client 
 
 /**
  * Create WebSocket client for long-polling connection.
- * EventDispatcher must be provided with registered handlers.
  */
-export function createFeishuWsClient(
-  credentials: FeishuCredentials,
-  eventDispatcher: lark.EventDispatcher,
-): lark.WSClient {
+export function createFeishuWsClient(credentials: FeishuCredentials): lark.WSClient {
   return new lark.WSClient({
     appId: credentials.appId,
     appSecret: credentials.appSecret,
     domain: lark.Domain.Feishu,
-    eventDispatcher,
   });
 }
 
