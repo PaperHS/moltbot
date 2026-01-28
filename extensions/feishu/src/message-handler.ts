@@ -126,16 +126,6 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
     hasImage: Boolean(imageKey),
   });
 
-  // Build message parts for dispatch
-  const messageParts: Array<
-    | { type: "text" | "image"; content: string }
-    | { type: "image"; buffer: Buffer; mimeType: string }
-  > = [];
-
-  if (text) {
-    messageParts.push({ type: "text", content: text });
-  }
-
   // Handle image if present
   let imageBuffer: Buffer | undefined;
   if (imageKey) {
@@ -156,39 +146,68 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
 
   // Determine reply target (chat_id for groups, sender open_id for DMs)
   const replyTo = isPrivate ? senderId : chatId;
+  const sessionKey = `feishu:${isPrivate ? senderId : chatId}`;
 
-  // Dispatch to agent
+  // Get runtime
   const core = getFeishuRuntime();
   const textLimit = core.channel.text.resolveTextChunkLimit(cfg, "feishu");
 
-  try {
-    await core.channel.reply.dispatchReplyFromConfig({
-      cfg,
-      channel: "feishu",
-      senderId,
-      senderName: undefined, // Could be resolved via API if needed
-      groupId: isGroup ? chatId : undefined,
-      chatType: isPrivate ? "dm" : "group",
-      text: text ?? "",
-      media: imageBuffer ? [{ buffer: imageBuffer, mimeType: "image/png" }] : undefined,
-      context: {
-        To: replyTo,
-        MessageId: messageId,
-        ChatId: chatId,
-        IsGroup: isGroup,
-      },
-      deliverText: async ({ text: replyText }) => {
-        const chunks = core.channel.text.chunkMarkdownText(replyText, textLimit);
+  // Build finalized inbound context
+  const ctxPayload = core.channel.reply.finalizeInboundContext({
+    Body: text ?? "",
+    RawBody: text ?? "",
+    CommandBody: text ?? "",
+    From: `feishu:${senderId}`,
+    To: `feishu:${replyTo}`,
+    SessionKey: sessionKey,
+    ChatType: isPrivate ? "direct" : "group",
+    ConversationLabel: isPrivate ? `feishu:${senderId}` : `feishu:group:${chatId}`,
+    GroupSubject: isGroup ? chatId : undefined,
+    SenderName: undefined,
+    SenderId: senderId,
+    Provider: "feishu" as const,
+    Surface: "feishu" as const,
+    MessageSid: messageId,
+    ...(imageBuffer
+      ? {
+          Media: [{ buffer: imageBuffer, mimeType: "image/png" }],
+        }
+      : {}),
+  });
+
+  // Create dispatcher
+  const dispatcher = {
+    deliverFinal: async (payload: { text?: string; mediaUrl?: string }) => {
+      if (payload.text) {
+        const chunks = core.channel.text.chunkMarkdownText(payload.text, textLimit);
         for (const chunk of chunks) {
           await sendFeishuText({ cfg, to: replyTo, text: chunk });
         }
-      },
-      deliverMedia: async ({ mediaUrl, text: caption }) => {
-        // For now, send media URL as text
-        const content = caption ? `${caption}\n${mediaUrl}` : mediaUrl;
-        await sendFeishuText({ cfg, to: replyTo, text: content });
-      },
+      }
+      if (payload.mediaUrl) {
+        await sendFeishuText({ cfg, to: replyTo, text: payload.mediaUrl });
+      }
+    },
+    deliverBlock: async (payload: { text?: string }) => {
+      if (payload.text) {
+        await sendFeishuText({ cfg, to: replyTo, text: payload.text });
+      }
+    },
+    deliverTool: async (payload: { text?: string }) => {
+      if (payload.text) {
+        await sendFeishuText({ cfg, to: replyTo, text: payload.text });
+      }
+    },
+  };
+
+  try {
+    const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
+      ctx: ctxPayload,
+      cfg,
+      dispatcher,
     });
+
+    log.info("dispatch complete", { queuedFinal, counts });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     const errorStack = err instanceof Error ? err.stack : undefined;
