@@ -38,6 +38,8 @@ export async function monitorFeishuWs(opts: MonitorFeishuWsOpts): Promise<Monito
 
   eventDispatcher.register({
     "im.message.receive_v1": async (data: FeishuMessageEvent) => {
+      // Log raw event structure for debugging
+      log.info("received raw event", { data: JSON.stringify(data).slice(0, 500) });
       log.debug("received message event", {
         messageId: data.event?.message?.message_id,
         chatType: data.event?.message?.chat_type,
