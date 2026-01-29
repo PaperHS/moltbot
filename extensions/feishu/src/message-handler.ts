@@ -45,7 +45,7 @@ function isAllowed(params: {
   const feishuCfg = cfg.channels?.feishu;
 
   if (isPrivate) {
-    const dmPolicy = feishuCfg?.dmPolicy ?? "pairing";
+    const dmPolicy = feishuCfg?.dmPolicy ?? "open";
     if (dmPolicy === "disabled") {
       return { allowed: false, reason: "DM disabled" };
     }
@@ -61,7 +61,7 @@ function isAllowed(params: {
   }
 
   // Group chat
-  const groupPolicy = feishuCfg?.groupPolicy ?? "allowlist";
+  const groupPolicy = feishuCfg?.groupPolicy ?? "open";
   if (groupPolicy === "open") {
     return { allowed: true };
   }
