@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import { dashboardCommand } from "../../commands/dashboard.js";
 import { doctorCommand } from "../../commands/doctor.js";
+import { profilesListCommand } from "../../commands/profiles.js";
 import { resetCommand } from "../../commands/reset.js";
 import { uninstallCommand } from "../../commands/uninstall.js";
 import { defaultRuntime } from "../../runtime.js";
@@ -107,6 +108,23 @@ export function registerMaintenanceCommands(program: Command) {
           nonInteractive: Boolean(opts.nonInteractive),
           dryRun: Boolean(opts.dryRun),
         });
+      });
+    });
+
+  program
+    .command("profiles")
+    .description("List all CLI configuration profiles")
+    .option("--json", "Output JSON", false)
+    .option("--plain", "Plain output", false)
+    .action(async (opts) => {
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        await profilesListCommand(
+          {
+            json: Boolean(opts.json),
+            plain: Boolean(opts.plain),
+          },
+          defaultRuntime,
+        );
       });
     });
 }
