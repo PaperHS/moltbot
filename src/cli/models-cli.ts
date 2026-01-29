@@ -6,6 +6,7 @@ import {
   modelsAliasesListCommand,
   modelsAliasesRemoveCommand,
   modelsAuthAddCommand,
+  modelsAuthListCommand,
   modelsAuthLoginCommand,
   modelsAuthOrderClearCommand,
   modelsAuthOrderGetCommand,
@@ -278,6 +279,25 @@ export function registerModelsCli(program: Command) {
   });
 
   const auth = models.command("auth").description("Manage model auth profiles");
+
+  auth
+    .command("list")
+    .description("List all auth profiles")
+    .option("--provider <name>", "Filter by provider")
+    .option("--json", "Output JSON", false)
+    .option("--plain", "Plain output", false)
+    .action(async (opts) => {
+      await runModelsCommand(async () => {
+        await modelsAuthListCommand(
+          {
+            provider: opts.provider as string | undefined,
+            json: Boolean(opts.json),
+            plain: Boolean(opts.plain),
+          },
+          defaultRuntime,
+        );
+      });
+    });
 
   auth
     .command("add")
