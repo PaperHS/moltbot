@@ -209,10 +209,12 @@ export async function uploadFeishuImage(params: {
       },
     });
 
+    console.log("[feishu:upload] Raw response:", JSON.stringify(response, null, 2));
     console.log("[feishu:upload] Upload response:", {
       code: response.code,
       msg: response.msg,
       hasImageKey: Boolean(response.data?.image_key),
+      hasData: Boolean(response.data),
     });
 
     if (response.code !== 0) {
@@ -228,6 +230,11 @@ export async function uploadFeishuImage(params: {
     return imageKey;
   } catch (error) {
     console.error("[feishu:upload] Upload failed:", error);
+    console.error("[feishu:upload] Error details:", {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     throw error;
   }
 }
