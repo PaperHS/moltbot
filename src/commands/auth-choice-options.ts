@@ -11,6 +11,7 @@ export type AuthChoiceGroupId =
   | "openai"
   | "anthropic"
   | "google"
+  | "google-proxy"
   | "copilot"
   | "openrouter"
   | "ai-gateway"
@@ -77,6 +78,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     label: "Google",
     hint: "Gemini API key + OAuth",
     choices: ["gemini-api-key", "google-antigravity", "google-gemini-cli"],
+  },
+  {
+    value: "google-proxy",
+    label: "Google Proxy",
+    hint: "Custom Gemini endpoint (API key + baseURL)",
+    choices: ["google-proxy-api-key"],
   },
   {
     value: "copilot",
@@ -160,6 +167,11 @@ export function buildAuthChoiceOptions(params: {
     hint: "Uses GitHub device flow",
   });
   options.push({ value: "gemini-api-key", label: "Google Gemini API key" });
+  options.push({
+    value: "google-proxy-api-key",
+    label: "Google Proxy API key",
+    hint: "Custom Gemini endpoint with API key",
+  });
   options.push({
     value: "google-antigravity",
     label: "Google Antigravity OAuth",
