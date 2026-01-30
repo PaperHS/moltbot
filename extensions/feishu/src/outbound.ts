@@ -1,7 +1,45 @@
 import type { ChannelOutboundAdapter } from "clawdbot/plugin-sdk";
 
 import { getFeishuRuntime } from "./runtime.js";
-import { sendFeishuText, uploadFeishuImage, sendFeishuImage } from "./send.js";
+import {
+  sendFeishuText,
+  uploadFeishuImage,
+  sendFeishuImage,
+  uploadFeishuFile,
+  sendFeishuFile,
+  detectFeishuFileType,
+} from "./send.js";
+
+/**
+ * Download media from URL.
+ */
+async function downloadMedia(url: string): Promise<{ buffer: Buffer; contentType?: string }> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download media from ${url}: ${response.statusText}`);
+  }
+  const contentType = response.headers.get("content-type") ?? undefined;
+  const arrayBuffer = await response.arrayBuffer();
+  return { buffer: Buffer.from(arrayBuffer), contentType };
+}
+
+/**
+ * Determine if the media URL is an image.
+ */
+function isImageUrl(url: string, contentType?: string): boolean {
+  if (contentType?.startsWith("image/")) return true;
+  const ext = url.toLowerCase().split(".").pop()?.split("?")[0] ?? "";
+  return ["jpg", "jpeg", "png", "gif", "webp", "bmp", "ico", "svg"].includes(ext);
+}
+
+/**
+ * Determine if the media URL is audio/voice.
+ */
+function isAudioUrl(url: string, contentType?: string): boolean {
+  if (contentType?.startsWith("audio/")) return true;
+  const ext = url.toLowerCase().split(".").pop()?.split("?")[0] ?? "";
+  return ["opus", "ogg", "mp3", "wav", "m4a", "aac"].includes(ext);
+}
 
 export const feishuOutbound: ChannelOutboundAdapter = {
   deliveryMode: "direct",
@@ -20,26 +58,73 @@ export const feishuOutbound: ChannelOutboundAdapter = {
 
     // Handle media URL
     if (mediaUrl) {
-      // If it's a base64 data URL, extract and upload
+      let buffer: Buffer | null = null;
+      let contentType: string | undefined;
+
+      // Handle base64 data URLs
       if (mediaUrl.startsWith("data:")) {
         const match = mediaUrl.match(/^data:([^;]+);base64,(.+)$/);
         if (match) {
+          contentType = match[1] ?? undefined;
           const base64Data = match[2];
           if (base64Data) {
-            const buffer = Buffer.from(base64Data, "base64");
-            const imageKey = await uploadFeishuImage({ cfg, image: buffer });
-            const result = await sendFeishuImage({ cfg, to, imageKey });
-            return { channel: "feishu", ...result };
+            buffer = Buffer.from(base64Data, "base64");
           }
+        }
+      } else {
+        // Download from remote URL
+        try {
+          const downloaded = await downloadMedia(mediaUrl);
+          buffer = downloaded.buffer;
+          contentType = downloaded.contentType;
+        } catch (error) {
+          // Fallback: send as text link if download fails
+          const result = await sendFeishuText({
+            cfg,
+            to,
+            text: `[Media](${mediaUrl})`,
+          });
+          return { channel: "feishu", ...result };
         }
       }
 
-      // For remote URLs, we'd need to download first
-      // For now, send as text link
+      if (buffer) {
+        // Determine media type and send appropriately
+        if (isImageUrl(mediaUrl, contentType)) {
+          // Send as image
+          const imageKey = await uploadFeishuImage({ cfg, image: buffer });
+          const result = await sendFeishuImage({ cfg, to, imageKey });
+          return { channel: "feishu", ...result };
+        } else if (isAudioUrl(mediaUrl, contentType)) {
+          // Send as audio/voice file
+          const { fileType, fileName } = detectFeishuFileType(mediaUrl, contentType);
+          const fileKey = await uploadFeishuFile({
+            cfg,
+            file: buffer,
+            fileName,
+            fileType: fileType === "opus" ? "opus" : "stream",
+          });
+          const result = await sendFeishuFile({ cfg, to, fileKey });
+          return { channel: "feishu", ...result };
+        } else {
+          // Send as generic file
+          const { fileType, fileName } = detectFeishuFileType(mediaUrl, contentType);
+          const fileKey = await uploadFeishuFile({
+            cfg,
+            file: buffer,
+            fileName,
+            fileType,
+          });
+          const result = await sendFeishuFile({ cfg, to, fileKey });
+          return { channel: "feishu", ...result };
+        }
+      }
+
+      // Fallback: send as text link
       const result = await sendFeishuText({
         cfg,
         to,
-        text: text ? "" : `[Image](${mediaUrl})`,
+        text: `[Media](${mediaUrl})`,
       });
       return { channel: "feishu", ...result };
     }
