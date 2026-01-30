@@ -6,6 +6,7 @@ import {
   modelsAliasesListCommand,
   modelsAliasesRemoveCommand,
   modelsAuthAddCommand,
+  modelsAuthGoogleProxyCommand,
   modelsAuthListCommand,
   modelsAuthLoginCommand,
   modelsAuthOrderClearCommand,
@@ -320,6 +321,25 @@ export function registerModelsCli(program: Command) {
           {
             provider: opts.provider as string | undefined,
             method: opts.method as string | undefined,
+            setDefault: Boolean(opts.setDefault),
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  auth
+    .command("google-proxy")
+    .description("Configure Google Proxy auth (API key + custom baseURL)")
+    .option("--api-key <key>", "Google Proxy API key")
+    .option("--base-url <url>", "Google Proxy base URL (default: official API)")
+    .option("--set-default", "Set google-proxy as default model", false)
+    .action(async (opts) => {
+      await runModelsCommand(async () => {
+        await modelsAuthGoogleProxyCommand(
+          {
+            apiKey: opts.apiKey as string | undefined,
+            baseUrl: opts.baseUrl as string | undefined,
             setDefault: Boolean(opts.setDefault),
           },
           defaultRuntime,

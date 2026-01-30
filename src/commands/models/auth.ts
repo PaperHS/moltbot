@@ -432,3 +432,76 @@ export async function modelsAuthLoginCommand(opts: LoginOptions, runtime: Runtim
     await prompter.note(result.notes.join("\n"), "Provider notes");
   }
 }
+
+export async function modelsAuthGoogleProxyCommand(
+  opts: {
+    apiKey?: string;
+    baseUrl?: string;
+    setDefault?: boolean;
+  },
+  runtime: RuntimeEnv,
+) {
+  if (!process.stdin.isTTY && (!opts.apiKey || !opts.baseUrl)) {
+    throw new Error(
+      "google-proxy auth requires an interactive TTY or --api-key and --base-url options.",
+    );
+  }
+
+  const { setGoogleProxyApiKey } = await import("../onboard-auth.credentials.js");
+  const { applyGoogleProxyProviderConfig, applyGoogleProxyConfig } =
+    await import("../onboard-auth.config-core.js");
+
+  const apiKey =
+    opts.apiKey?.trim() ||
+    String(
+      await text({
+        message: "Enter Google Proxy API key",
+        validate: (value) => (value?.trim() ? undefined : "API key is required"),
+      }),
+    ).trim();
+
+  const baseUrl =
+    opts.baseUrl?.trim() ||
+    String(
+      await text({
+        message: "Enter Google Proxy base URL",
+        initialValue: "https://generativelanguage.googleapis.com/v1beta",
+        validate: (value) => (value?.trim() ? undefined : "Base URL is required"),
+      }),
+    ).trim();
+
+  const snapshot = await readConfigFileSnapshot();
+  if (!snapshot.valid) {
+    const issues = snapshot.issues.map((issue) => `- ${issue.path}: ${issue.message}`).join("\n");
+    throw new Error(`Invalid config at ${snapshot.path}\n${issues}`);
+  }
+
+  const config = snapshot.config;
+  const defaultAgentId = resolveDefaultAgentId(config);
+  const agentDir = resolveAgentDir(config, defaultAgentId);
+
+  await setGoogleProxyApiKey(apiKey, agentDir);
+
+  await updateConfig((cfg) => {
+    let next = applyAuthProfileConfig(cfg, {
+      profileId: "google-proxy:default",
+      provider: "google-proxy",
+      mode: "api_key",
+    });
+
+    next = applyGoogleProxyProviderConfig(next, baseUrl);
+
+    if (opts.setDefault) {
+      next = applyGoogleProxyConfig(next, baseUrl);
+    }
+
+    return next;
+  });
+
+  logConfigUpdated(runtime);
+  runtime.log(`Auth profile: google-proxy:default (google-proxy/api_key)`);
+  runtime.log(`Base URL: ${baseUrl}`);
+  if (opts.setDefault) {
+    runtime.log("Default model set to google-proxy/gemini-3-pro-high");
+  }
+}
