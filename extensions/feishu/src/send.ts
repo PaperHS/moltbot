@@ -495,18 +495,30 @@ export async function getFeishuMessage(params: {
       },
     });
 
+    console.log("[feishu:getFeishuMessage] Raw response:", JSON.stringify(response, null, 2));
+
     if (response.code !== 0 || !response.data?.items?.[0]) {
+      console.log("[feishu:getFeishuMessage] Invalid response or no items");
       return null;
     }
 
     const message = response.data.items[0];
+    console.log("[feishu:getFeishuMessage] Message structure:", {
+      msg_type: message.msg_type,
+      hasBody: Boolean(message.body),
+      hasSender: Boolean(message.sender),
+      senderStructure: message.sender ? Object.keys(message.sender) : [],
+      senderIdStructure: message.sender?.id ? Object.keys(message.sender.id) : [],
+    });
+
     return {
       messageType: message.msg_type,
       content: message.body?.content,
       senderId: message.sender?.id?.open_id,
       senderName: message.sender?.sender_type === "user" ? undefined : message.sender?.sender_type,
     };
-  } catch {
+  } catch (error) {
+    console.error("[feishu:getFeishuMessage] Error:", error);
     return null;
   }
 }
