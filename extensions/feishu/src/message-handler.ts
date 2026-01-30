@@ -213,6 +213,14 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
       : {}),
   });
 
+  console.log("[feishu] Built context payload:", {
+    Body: ctxPayload.Body,
+    hasReplyToId: Boolean(ctxPayload.ReplyToId),
+    ReplyToId: ctxPayload.ReplyToId,
+    ReplyToBody: ctxPayload.ReplyToBody ? `${ctxPayload.ReplyToBody.substring(0, 100)}...` : undefined,
+    ReplyToIsQuote: ctxPayload.ReplyToIsQuote,
+  });
+
   // Create dispatcher using the proper reply dispatcher pattern
   const { dispatcher } = core.channel.reply.createReplyDispatcherWithTyping({
     deliver: async (payload) => {
