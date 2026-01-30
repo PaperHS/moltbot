@@ -64,7 +64,7 @@ function resolveProviderBaseUrlFromEnv(provider: string): string | undefined {
 
 function applyProviderBaseUrlOverride(
   model: Model<Api>,
-  cfg: MoltbotConfig | undefined,
+  cfg: OpenClawConfig | undefined,
 ): Model<Api> {
   // Priority: env var > config > built-in
   const envBaseUrl = resolveProviderBaseUrlFromEnv(model.provider);

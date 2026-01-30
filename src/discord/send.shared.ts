@@ -123,14 +123,10 @@ export async function parseAndResolveRecipient(
     ambiguousMessage: `Ambiguous Discord recipient "${trimmed}". Use "user:${trimmed}" for DMs or "channel:${trimmed}" for channel messages.`,
   };
 
-  const resolved = await resolveDiscordTarget(
-    raw,
-    {
-      cfg,
-      accountId: accountInfo.accountId,
-    },
-    parseOptions,
-  );
+  const resolved = await resolveDiscordTarget(raw, {
+    cfg,
+    accountId: accountInfo.accountId,
+  });
 
   if (resolved) {
     return { kind: resolved.kind, id: resolved.id };

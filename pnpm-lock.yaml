@@ -316,7 +316,7 @@ importers:
     devDependencies:
       clawdbot:
         specifier: workspace:moltbot@*
-        version: link:../..
+        version: link:../../packages/moltbot
 
   extensions/google-antigravity-auth: {}
 
@@ -328,7 +328,7 @@ importers:
         specifier: ^10.5.0
         version: 10.5.0
     devDependencies:
-      moltbot:
+      openclaw:
         specifier: workspace:*
         version: link:../..
 
@@ -336,7 +336,7 @@ importers:
 
   extensions/line:
     devDependencies:
-      moltbot:
+      openclaw:
         specifier: workspace:*
         version: link:../..
 
@@ -362,7 +362,7 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
-      moltbot:
+      openclaw:
         specifier: workspace:*
         version: link:../..
 
@@ -370,7 +370,7 @@ importers:
 
   extensions/memory-core:
     devDependencies:
-      moltbot:
+      openclaw:
         specifier: workspace:*
         version: link:../..
 
@@ -400,7 +400,7 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
-      moltbot:
+      openclaw:
         specifier: workspace:*
         version: link:../..
       proper-lockfile:
@@ -411,12 +411,12 @@ importers:
 
   extensions/nostr:
     dependencies:
-      moltbot:
-        specifier: workspace:*
-        version: link:../..
       nostr-tools:
         specifier: ^2.20.0
         version: 2.20.0(typescript@5.9.3)
+      openclaw:
+        specifier: workspace:*
+        version: link:../..
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -453,7 +453,7 @@ importers:
         specifier: ^4.3.5
         version: 4.3.6
     devDependencies:
-      moltbot:
+      openclaw:
         specifier: workspace:*
         version: link:../..
 
@@ -473,7 +473,7 @@ importers:
 
   extensions/zalo:
     dependencies:
-      moltbot:
+      openclaw:
         specifier: workspace:*
         version: link:../..
       undici:
@@ -485,13 +485,19 @@ importers:
       '@sinclair/typebox':
         specifier: 0.34.47
         version: 0.34.47
-      moltbot:
+      openclaw:
         specifier: workspace:*
         version: link:../..
 
   packages/clawdbot:
     dependencies:
-      moltbot:
+      openclaw:
+        specifier: workspace:*
+        version: link:../..
+
+  packages/moltbot:
+    dependencies:
+      openclaw:
         specifier: workspace:*
         version: link:../..
 

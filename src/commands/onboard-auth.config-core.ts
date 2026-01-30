@@ -537,9 +537,9 @@ export function applyAuthProfileConfig(
 }
 
 export function applyGoogleProxyProviderConfig(
-  cfg: MoltbotConfig,
+  cfg: OpenClawConfig,
   baseUrl?: string,
-): MoltbotConfig {
+): OpenClawConfig {
   const models = { ...cfg.agents?.defaults?.models };
   models[GOOGLE_PROXY_DEFAULT_MODEL_REF] = {
     ...models[GOOGLE_PROXY_DEFAULT_MODEL_REF],
@@ -560,7 +560,7 @@ export function applyGoogleProxyProviderConfig(
   const mergedModels = [
     ...existingModels,
     ...googleProxyModels.filter(
-      (model) => !existingModels.some((existing) => existing.id === model.id),
+      (model) => !existingModels.some((existing: { id: string }) => existing.id === model.id),
     ),
   ];
 
@@ -599,7 +599,7 @@ export function applyGoogleProxyProviderConfig(
   };
 }
 
-export function applyGoogleProxyConfig(cfg: MoltbotConfig, baseUrl?: string): MoltbotConfig {
+export function applyGoogleProxyConfig(cfg: OpenClawConfig, baseUrl?: string): OpenClawConfig {
   const next = applyGoogleProxyProviderConfig(cfg, baseUrl);
   const existingModel = next.agents?.defaults?.model;
   return {
