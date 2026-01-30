@@ -1,18 +1,18 @@
 import { Readable } from "node:stream";
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import { getFeishuClient } from "./client.js";
 import { resolveFeishuCredentials } from "./credentials.js";
 import type { FeishuSendResult } from "./types.js";
 
 export type SendFeishuTextParams = {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   text: string;
   replyToMessageId?: string;
 };
 
 export type SendFeishuImageParams = {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   imageKey: string;
   replyToMessageId?: string;
@@ -137,7 +137,7 @@ export async function sendFeishuImage(params: SendFeishuImageParams): Promise<Fe
  * Reply to a message in Feishu.
  */
 export async function replyFeishuText(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
   text: string;
 }): Promise<FeishuSendResult> {
@@ -177,7 +177,7 @@ export async function replyFeishuText(params: {
  * 步骤二：上传图片获取 image_key
  */
 export async function uploadFeishuImage(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   image: Buffer;
   imageType?: "message" | "avatar";
 }): Promise<string> {
@@ -259,7 +259,7 @@ export async function uploadFeishuImage(params: {
  * Upload a file to Feishu and get the file_key.
  */
 export async function uploadFeishuFile(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   file: Buffer;
   fileName: string;
   fileType: "opus" | "mp4" | "pdf" | "doc" | "xls" | "ppt" | "stream";
@@ -313,7 +313,7 @@ export async function uploadFeishuFile(params: {
  * Send a file message via Feishu API.
  */
 export async function sendFeishuFile(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   fileKey: string;
   replyToMessageId?: string;
@@ -419,7 +419,7 @@ export function detectFeishuFileType(
  * Download an image from Feishu.
  */
 export async function downloadFeishuImage(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
   imageKey: string;
 }): Promise<Buffer> {
@@ -470,7 +470,7 @@ export async function downloadFeishuImage(params: {
  * Used to fetch quoted/referenced message details.
  */
 export async function getFeishuMessage(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   messageId: string;
 }): Promise<{
   messageType?: string;

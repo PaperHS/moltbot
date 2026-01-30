@@ -1,4 +1,4 @@
-import type { ClawdbotConfig, RuntimeEnv } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
 
 import { getFeishuRuntime } from "./runtime.js";
 import { resolveFeishuCredentials } from "./credentials.js";
@@ -6,7 +6,7 @@ import { monitorFeishuWs } from "./monitor-ws.js";
 import { monitorFeishuWebhook } from "./monitor-webhook.js";
 
 export type MonitorFeishuOpts = {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   runtime?: RuntimeEnv;
   abortSignal?: AbortSignal;
 };

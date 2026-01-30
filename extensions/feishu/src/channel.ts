@@ -1,9 +1,9 @@
-import type { ChannelPlugin, ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { ChannelPlugin, OpenClawConfig } from "openclaw/plugin-sdk";
 import {
   buildChannelConfigSchema,
   DEFAULT_ACCOUNT_ID,
   PAIRING_APPROVED_MESSAGE,
-} from "clawdbot/plugin-sdk";
+} from "openclaw/plugin-sdk";
 
 import { FeishuConfigSchema } from "./config-schema.js";
 import { resolveFeishuCredentials } from "./credentials.js";
@@ -78,7 +78,7 @@ export const feishuPlugin: ChannelPlugin<ResolvedFeishuAccount> = {
       },
     }),
     deleteAccount: ({ cfg }) => {
-      const next = { ...cfg } as ClawdbotConfig;
+      const next = { ...cfg } as OpenClawConfig;
       const nextChannels = { ...cfg.channels };
       delete nextChannels.feishu;
       if (Object.keys(nextChannels).length > 0) {

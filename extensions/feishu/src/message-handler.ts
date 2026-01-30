@@ -1,5 +1,5 @@
 import type * as lark from "@larksuiteoapi/node-sdk";
-import type { ClawdbotConfig, RuntimeEnv, Logger } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig, RuntimeEnv, Logger } from "openclaw/plugin-sdk";
 
 import type { FeishuMessageEvent } from "./types.js";
 import {
@@ -27,7 +27,7 @@ import {
 import { getFeishuRuntime } from "./runtime.js";
 
 export type HandleFeishuMessageOpts = {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   runtime: RuntimeEnv;
   log: Logger;
   event: FeishuMessageEvent;
@@ -39,7 +39,7 @@ export type HandleFeishuMessageOpts = {
  * Check if sender is allowed based on policy and allowlist.
  */
 function isAllowed(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   senderId: string;
   chatId: string;
   isPrivate: boolean;

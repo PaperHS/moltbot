@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import type { ClawdbotConfig, RuntimeEnv } from "clawdbot/plugin-sdk";
-import type { Logger } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
+import type { Logger } from "openclaw/plugin-sdk";
 
 import { createFeishuEventDispatcher, createFeishuClient } from "./client.js";
 import { resolveFeishuCredentials } from "./credentials.js";
@@ -8,7 +8,7 @@ import type { FeishuMessageEvent } from "./types.js";
 import { handleFeishuMessage } from "./message-handler.js";
 
 export type MonitorFeishuWebhookOpts = {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   runtime: RuntimeEnv;
   log: Logger;
   abortSignal?: AbortSignal;

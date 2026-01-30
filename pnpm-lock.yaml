@@ -314,9 +314,9 @@ importers:
         specifier: ^5.2.1
         version: 5.2.1
     devDependencies:
-      clawdbot:
-        specifier: workspace:moltbot@*
-        version: link:../../packages/moltbot
+      openclaw:
+        specifier: workspace:*
+        version: link:../..
 
   extensions/google-antigravity-auth: {}
 
