@@ -45,6 +45,39 @@ export function buildModelAliasLines(cfg?: OpenClawConfig) {
     .map((entry) => `- ${entry.alias}: ${entry.model}`);
 }
 
+// Map provider id to environment variable names for base URL override.
+const PROVIDER_BASE_URL_ENV_MAP: Record<string, string[]> = {
+  google: ["GEMINI_BASE_URL", "CLAWDBOT_GEMINI_BASE_URL"],
+  "google-gemini-cli": ["GEMINI_CLI_BASE_URL", "CLAWDBOT_GEMINI_CLI_BASE_URL"],
+  "google-antigravity": ["ANTIGRAVITY_BASE_URL", "CLAWDBOT_ANTIGRAVITY_BASE_URL"],
+};
+
+function resolveProviderBaseUrlFromEnv(provider: string): string | undefined {
+  const envVars = PROVIDER_BASE_URL_ENV_MAP[provider];
+  if (!envVars) return undefined;
+  for (const envVar of envVars) {
+    const value = process.env[envVar]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function applyProviderBaseUrlOverride(
+  model: Model<Api>,
+  cfg: MoltbotConfig | undefined,
+): Model<Api> {
+  // Priority: env var > config > built-in
+  const envBaseUrl = resolveProviderBaseUrlFromEnv(model.provider);
+  if (envBaseUrl && envBaseUrl !== model.baseUrl) {
+    return { ...model, baseUrl: envBaseUrl };
+  }
+  const providers = cfg?.models?.providers ?? {};
+  const providerCfg = providers[model.provider];
+  const customBaseUrl = providerCfg?.baseUrl?.trim();
+  if (!customBaseUrl || customBaseUrl === model.baseUrl) return model;
+  return { ...model, baseUrl: customBaseUrl };
+}
+
 export function resolveModel(
   provider: string,
   modelId: string,
@@ -97,5 +130,7 @@ export function resolveModel(
       modelRegistry,
     };
   }
-  return { model: normalizeModelCompat(model), authStorage, modelRegistry };
+  // Apply custom baseUrl override from config if configured for this provider.
+  const overridden = applyProviderBaseUrlOverride(model, cfg);
+  return { model: normalizeModelCompat(overridden), authStorage, modelRegistry };
 }
