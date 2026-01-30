@@ -134,8 +134,10 @@ export const feishuPlugin: ChannelPlugin<ResolvedFeishuAccount> = {
       looksLikeId: (raw) => {
         const trimmed = raw.trim();
         if (!trimmed) return false;
+        // Strip feishu: or lark: prefix if present
+        const stripped = trimmed.replace(/^(feishu|lark):/i, "").trim();
         // open_id starts with ou_, chat_id starts with oc_
-        return trimmed.startsWith("ou_") || trimmed.startsWith("oc_");
+        return stripped.startsWith("ou_") || stripped.startsWith("oc_");
       },
       hint: "<open_id|chat_id>",
     },
