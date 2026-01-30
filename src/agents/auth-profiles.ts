@@ -7,6 +7,7 @@ export { resolveAuthStorePathForDisplay } from "./auth-profiles/paths.js";
 export {
   listProfilesForProvider,
   markAuthProfileGood,
+  removeAuthProfile,
   setAuthProfileOrder,
   upsertAuthProfile,
 } from "./auth-profiles/profiles.js";

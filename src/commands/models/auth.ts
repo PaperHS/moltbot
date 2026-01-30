@@ -505,3 +505,76 @@ export async function modelsAuthGoogleProxyCommand(
     runtime.log("Default model set to google-proxy/gemini-3-pro-high");
   }
 }
+
+export async function modelsAuthRemoveCommand(
+  opts: { profileId?: string; provider?: string },
+  runtime: RuntimeEnv,
+): Promise<void> {
+  const { removeAuthProfile, ensureAuthProfileStore } =
+    await import("../../agents/auth-profiles.js");
+
+  const snapshot = await readConfigFileSnapshot();
+  if (!snapshot.valid) {
+    const issues = snapshot.issues.map((issue) => `- ${issue.path}: ${issue.message}`).join("\n");
+    throw new Error(`Invalid config at ${snapshot.path}\n${issues}`);
+  }
+
+  const config = snapshot.config;
+  const defaultAgentId = resolveDefaultAgentId(config);
+  const agentDir = resolveAgentDir(config, defaultAgentId);
+  const store = ensureAuthProfileStore(agentDir);
+
+  let profileId = opts.profileId?.trim();
+
+  if (!profileId) {
+    // Interactive mode: select from available profiles
+    const allProfiles = Object.entries(store.profiles);
+    if (allProfiles.length === 0) {
+      runtime.log("No auth profiles found.");
+      return;
+    }
+
+    const filteredProfiles = opts.provider
+      ? allProfiles.filter(([, cred]) => cred.provider === normalizeProviderId(opts.provider!))
+      : allProfiles;
+
+    if (filteredProfiles.length === 0) {
+      runtime.log(`No profiles found for provider: ${opts.provider}`);
+      return;
+    }
+
+    profileId = String(
+      await select({
+        message: "Select profile to remove",
+        options: filteredProfiles.map(([id, cred]) => ({
+          value: id,
+          label: id,
+          hint: `${cred.provider}/${cred.type}`,
+        })),
+      }),
+    );
+  }
+
+  if (!store.profiles[profileId]) {
+    throw new Error(`Profile not found: ${profileId}`);
+  }
+
+  const profile = store.profiles[profileId];
+  const confirmed = await confirm({
+    message: `Remove auth profile "${profileId}" (${profile.provider}/${profile.type})?`,
+    initialValue: false,
+  });
+
+  if (!confirmed) {
+    runtime.log("Cancelled.");
+    return;
+  }
+
+  const removed = await removeAuthProfile({ profileId, agentDir });
+
+  if (removed) {
+    runtime.log(`Removed auth profile: ${profileId}`);
+  } else {
+    throw new Error(`Failed to remove profile: ${profileId}`);
+  }
+}

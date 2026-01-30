@@ -13,6 +13,7 @@ import {
   modelsAuthOrderGetCommand,
   modelsAuthOrderSetCommand,
   modelsAuthPasteTokenCommand,
+  modelsAuthRemoveCommand,
   modelsAuthSetupTokenCommand,
   modelsFallbacksAddCommand,
   modelsFallbacksClearCommand,
@@ -341,6 +342,23 @@ export function registerModelsCli(program: Command) {
             apiKey: opts.apiKey as string | undefined,
             baseUrl: opts.baseUrl as string | undefined,
             setDefault: Boolean(opts.setDefault),
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  auth
+    .command("remove")
+    .description("Remove an auth profile")
+    .option("--profile-id <id>", "Profile ID to remove")
+    .option("--provider <name>", "Filter profiles by provider (interactive mode)")
+    .action(async (opts) => {
+      await runModelsCommand(async () => {
+        await modelsAuthRemoveCommand(
+          {
+            profileId: opts.profileId as string | undefined,
+            provider: opts.provider as string | undefined,
           },
           defaultRuntime,
         );

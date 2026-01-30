@@ -82,3 +82,53 @@ export async function markAuthProfileGood(params: {
   store.lastGood = { ...store.lastGood, [provider]: profileId };
   saveAuthProfileStore(store, agentDir);
 }
+
+export async function removeAuthProfile(params: {
+  profileId: string;
+  agentDir?: string;
+}): Promise<boolean> {
+  return !!(await updateAuthProfileStoreWithLock({
+    agentDir: params.agentDir,
+    updater: (store) => {
+      if (!store.profiles[params.profileId]) return false;
+      delete store.profiles[params.profileId];
+
+      // Clean up lastGood references
+      if (store.lastGood) {
+        for (const [provider, lastGoodId] of Object.entries(store.lastGood)) {
+          if (lastGoodId === params.profileId) {
+            delete store.lastGood[provider];
+          }
+        }
+        if (Object.keys(store.lastGood).length === 0) {
+          store.lastGood = undefined;
+        }
+      }
+
+      // Clean up order references
+      if (store.order) {
+        for (const [provider, orderList] of Object.entries(store.order)) {
+          const filtered = orderList.filter((id) => id !== params.profileId);
+          if (filtered.length === 0) {
+            delete store.order[provider];
+          } else if (filtered.length !== orderList.length) {
+            store.order[provider] = filtered;
+          }
+        }
+        if (Object.keys(store.order).length === 0) {
+          store.order = undefined;
+        }
+      }
+
+      // Clean up usage stats
+      if (store.usageStats) {
+        delete store.usageStats[params.profileId];
+        if (Object.keys(store.usageStats).length === 0) {
+          store.usageStats = undefined;
+        }
+      }
+
+      return true;
+    },
+  }));
+}

@@ -9,6 +9,7 @@ export {
   modelsAuthGoogleProxyCommand,
   modelsAuthLoginCommand,
   modelsAuthPasteTokenCommand,
+  modelsAuthRemoveCommand,
   modelsAuthSetupTokenCommand,
 } from "./models/auth.js";
 export { modelsAuthListCommand } from "./models/auth-list.js";
