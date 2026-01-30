@@ -1,5 +1,5 @@
-import type { ClawdbotPluginApi } from "clawdbot/plugin-sdk";
-import { emptyPluginConfigSchema } from "clawdbot/plugin-sdk";
+import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
+import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
 
 import { feishuPlugin } from "./src/channel.js";
 import { setFeishuRuntime } from "./src/runtime.js";
@@ -11,7 +11,7 @@ const plugin = {
   name: "Feishu",
   description: "Feishu/Lark channel plugin (飞书)",
   configSchema: emptyPluginConfigSchema(),
-  register(api: ClawdbotPluginApi) {
+  register(api: OpenClawPluginApi) {
     setFeishuRuntime(api.runtime);
     api.registerChannel({ plugin: feishuPlugin });
   },
