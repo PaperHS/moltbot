@@ -182,9 +182,18 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
   const core = getFeishuRuntime();
   const textLimit = core.channel.text.resolveTextChunkLimit(cfg, "feishu");
 
+  // Format reply suffix (similar to Telegram pattern)
+  const replySuffix =
+    parentId && replyToBody
+      ? `\n\n[Replying to ${replyToSender ?? "unknown"}${parentId ? ` id:${parentId}` : ""}]\n${replyToBody}\n[/Replying]`
+      : "";
+
+  // Build full body with reply context
+  const fullBody = `${text ?? ""}${replySuffix}`;
+
   // Build finalized inbound context
   const ctxPayload = core.channel.reply.finalizeInboundContext({
-    Body: text ?? "",
+    Body: fullBody,
     RawBody: text ?? "",
     CommandBody: text ?? "",
     From: `feishu:${senderId}`,
