@@ -210,18 +210,34 @@ export async function uploadFeishuImage(params: {
     });
 
     console.log("[feishu:upload] Raw response:", JSON.stringify(response, null, 2));
-    console.log("[feishu:upload] Upload response:", {
-      code: response.code,
-      msg: response.msg,
-      hasImageKey: Boolean(response.data?.image_key),
-      hasData: Boolean(response.data),
-    });
 
-    if (response.code !== 0) {
-      throw new Error(`Feishu image upload failed: ${response.msg} (code: ${response.code})`);
+    // Handle two possible response formats:
+    // 1. SDK already unwrapped: { image_key: "..." }
+    // 2. Standard Feishu API: { code: 0, msg: "success", data: { image_key: "..." } }
+    let imageKey: string | undefined;
+
+    if (typeof response === "object" && response !== null) {
+      // Check if SDK already unwrapped the response
+      if ("image_key" in response && typeof response.image_key === "string") {
+        imageKey = response.image_key;
+        console.log("[feishu:upload] SDK returned unwrapped response with image_key:", imageKey);
+      }
+      // Check standard API response format
+      else if ("code" in response && "data" in response) {
+        console.log("[feishu:upload] Standard API response:", {
+          code: response.code,
+          msg: response.msg,
+          hasData: Boolean(response.data),
+        });
+
+        if (response.code !== 0) {
+          throw new Error(`Feishu image upload failed: ${response.msg} (code: ${response.code})`);
+        }
+
+        imageKey = response.data?.image_key;
+      }
     }
 
-    const imageKey = response.data?.image_key;
     if (!imageKey) {
       throw new Error("Feishu image upload returned no image_key");
     }
@@ -269,11 +285,23 @@ export async function uploadFeishuFile(params: {
     },
   });
 
-  if (response.code !== 0) {
-    throw new Error(`Feishu file upload failed: ${response.msg} (code: ${response.code})`);
+  // Handle two possible response formats (same as image upload)
+  let fileKey: string | undefined;
+
+  if (typeof response === "object" && response !== null) {
+    // Check if SDK already unwrapped the response
+    if ("file_key" in response && typeof response.file_key === "string") {
+      fileKey = response.file_key;
+    }
+    // Check standard API response format
+    else if ("code" in response && "data" in response) {
+      if (response.code !== 0) {
+        throw new Error(`Feishu file upload failed: ${response.msg} (code: ${response.code})`);
+      }
+      fileKey = response.data?.file_key;
+    }
   }
 
-  const fileKey = response.data?.file_key;
   if (!fileKey) {
     throw new Error("Feishu file upload returned no file_key");
   }
