@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
 import { getFeishuClient } from "./client.js";
 import { resolveFeishuCredentials } from "./credentials.js";
@@ -168,10 +169,13 @@ export async function uploadFeishuImage(params: {
 
   const client = getFeishuClient(credentials);
 
+  // Convert Buffer to Stream for Feishu SDK
+  const imageStream = Readable.from(image);
+
   const response = await client.im.image.create({
     data: {
       image_type: imageType,
-      image: Buffer.from(image),
+      image: imageStream,
     },
   });
 
@@ -206,11 +210,14 @@ export async function uploadFeishuFile(params: {
 
   const client = getFeishuClient(credentials);
 
+  // Convert Buffer to Stream for Feishu SDK
+  const fileStream = Readable.from(file);
+
   const response = await client.im.file.create({
     data: {
       file_type: fileType,
       file_name: fileName,
-      file: Buffer.from(file),
+      file: fileStream,
     },
   });
 
