@@ -268,12 +268,21 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
   });
 
   try {
+    console.log("[feishu] Starting dispatch with context:", {
+      from: ctxPayload.From,
+      to: ctxPayload.To,
+      sessionKey: ctxPayload.SessionKey,
+      bodyLength: ctxPayload.Body?.length,
+      hasReplyTo: Boolean(ctxPayload.ReplyToId),
+    });
+
     const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
       ctx: ctxPayload,
       cfg,
       dispatcher,
     });
 
+    console.log("[feishu] Dispatch complete:", { queuedFinal, counts });
     log.info("dispatch complete", { queuedFinal, counts });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
@@ -297,4 +306,6 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
       // Ignore send error
     }
   }
+
+  console.log("[feishu] handleFeishuMessage finished");
 }
