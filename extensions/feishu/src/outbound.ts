@@ -68,8 +68,15 @@ export const feishuOutbound: ChannelOutboundAdapter = {
     return { channel: "feishu", ...result };
   },
   sendMedia: async ({ cfg, to, text, mediaUrl }) => {
+    console.log("[feishu:outbound] sendMedia called:", {
+      to,
+      hasText: Boolean(text),
+      mediaUrl: mediaUrl ? `${mediaUrl.substring(0, 50)}...` : null,
+    });
+
     // If there's text, send it first
     if (text) {
+      console.log("[feishu:outbound] Sending text first");
       await sendFeishuText({ cfg, to, text });
     }
 
@@ -80,18 +87,22 @@ export const feishuOutbound: ChannelOutboundAdapter = {
 
       // Handle base64 data URLs
       if (mediaUrl.startsWith("data:")) {
+        console.log("[feishu:outbound] Processing base64 data URL");
         const match = mediaUrl.match(/^data:([^;]+);base64,(.+)$/);
         if (match) {
           contentType = match[1] ?? undefined;
           const base64Data = match[2];
           if (base64Data) {
             buffer = Buffer.from(base64Data, "base64");
+            console.log("[feishu:outbound] Decoded base64, buffer size:", buffer.length);
           }
         }
       } else if (isLocalFilePath(mediaUrl)) {
         // Handle local file path
+        console.log("[feishu:outbound] Processing local file path:", mediaUrl);
         try {
           buffer = fs.readFileSync(mediaUrl);
+          console.log("[feishu:outbound] Read local file, size:", buffer.length);
           // Try to detect content type from file extension
           const ext = mediaUrl.toLowerCase().split(".").pop()?.split("?")[0];
           if (ext === "png") contentType = "image/png";
@@ -104,7 +115,9 @@ export const feishuOutbound: ChannelOutboundAdapter = {
           else if (ext === "opus") contentType = "audio/opus";
           else if (ext === "mp4") contentType = "video/mp4";
           else if (ext === "pdf") contentType = "application/pdf";
+          console.log("[feishu:outbound] Detected content type:", contentType);
         } catch (error) {
+          console.error("[feishu:outbound] Failed to read local file:", error);
           // Fallback: send as text link if read fails
           const result = await sendFeishuText({
             cfg,
@@ -115,11 +128,14 @@ export const feishuOutbound: ChannelOutboundAdapter = {
         }
       } else {
         // Download from remote URL
+        console.log("[feishu:outbound] Downloading from remote URL:", mediaUrl);
         try {
           const downloaded = await downloadMedia(mediaUrl);
           buffer = downloaded.buffer;
           contentType = downloaded.contentType;
+          console.log("[feishu:outbound] Downloaded, size:", buffer.length, "type:", contentType);
         } catch (error) {
+          console.error("[feishu:outbound] Failed to download media:", error);
           // Fallback: send as text link if download fails
           const result = await sendFeishuText({
             cfg,
@@ -132,13 +148,18 @@ export const feishuOutbound: ChannelOutboundAdapter = {
 
       if (buffer) {
         // Determine media type and send appropriately
+        console.log("[feishu:outbound] Processing buffer, detecting media type");
         if (isImageUrl(mediaUrl, contentType)) {
           // Send as image
+          console.log("[feishu:outbound] Detected as image, uploading...");
           const imageKey = await uploadFeishuImage({ cfg, image: buffer });
+          console.log("[feishu:outbound] Image uploaded, sending message...");
           const result = await sendFeishuImage({ cfg, to, imageKey });
+          console.log("[feishu:outbound] Image message sent successfully");
           return { channel: "feishu", ...result };
         } else if (isAudioUrl(mediaUrl, contentType)) {
           // Send as audio/voice file
+          console.log("[feishu:outbound] Detected as audio, uploading...");
           const { fileType, fileName } = detectFeishuFileType(mediaUrl, contentType);
           const fileKey = await uploadFeishuFile({
             cfg,
@@ -146,10 +167,13 @@ export const feishuOutbound: ChannelOutboundAdapter = {
             fileName,
             fileType: fileType === "opus" ? "opus" : "stream",
           });
+          console.log("[feishu:outbound] Audio uploaded, sending message...");
           const result = await sendFeishuFile({ cfg, to, fileKey });
+          console.log("[feishu:outbound] Audio message sent successfully");
           return { channel: "feishu", ...result };
         } else {
           // Send as generic file
+          console.log("[feishu:outbound] Detected as generic file, uploading...");
           const { fileType, fileName } = detectFeishuFileType(mediaUrl, contentType);
           const fileKey = await uploadFeishuFile({
             cfg,
@@ -157,7 +181,9 @@ export const feishuOutbound: ChannelOutboundAdapter = {
             fileName,
             fileType,
           });
+          console.log("[feishu:outbound] File uploaded, sending message...");
           const result = await sendFeishuFile({ cfg, to, fileKey });
+          console.log("[feishu:outbound] File message sent successfully");
           return { channel: "feishu", ...result };
         }
       }

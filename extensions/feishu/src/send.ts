@@ -75,11 +75,18 @@ export async function sendFeishuText(params: SendFeishuTextParams): Promise<Feis
 
 /**
  * Send an image message via Feishu API.
+ * 步骤三：发送图片消息
  */
 export async function sendFeishuImage(params: SendFeishuImageParams): Promise<FeishuSendResult> {
   const { cfg, to, imageKey, replyToMessageId } = params;
   const feishuCfg = cfg.channels?.feishu;
   const credentials = resolveFeishuCredentials(feishuCfg);
+
+  console.log("[feishu:send] Sending image message:", {
+    to,
+    imageKey,
+    hasReplyTo: Boolean(replyToMessageId),
+  });
 
   if (!credentials) {
     throw new Error("Feishu credentials not configured");
@@ -88,28 +95,42 @@ export async function sendFeishuImage(params: SendFeishuImageParams): Promise<Fe
   const client = getFeishuClient(credentials);
   const receiveIdType = resolveReceiveIdType(to);
 
+  console.log("[feishu:send] Resolved receive_id_type:", receiveIdType);
+
   const content = JSON.stringify({ image_key: imageKey });
 
-  const response = await client.im.message.create({
-    params: {
-      receive_id_type: receiveIdType,
-    },
-    data: {
-      receive_id: to,
-      msg_type: "image",
-      content,
-      ...(replyToMessageId ? { reply_in_thread: false } : {}),
-    },
-  });
+  try {
+    const response = await client.im.message.create({
+      params: {
+        receive_id_type: receiveIdType,
+      },
+      data: {
+        receive_id: to,
+        msg_type: "image",
+        content,
+        ...(replyToMessageId ? { reply_in_thread: false } : {}),
+      },
+    });
 
-  if (response.code !== 0) {
-    throw new Error(`Feishu image send failed: ${response.msg} (code: ${response.code})`);
+    console.log("[feishu:send] Send response:", {
+      code: response.code,
+      msg: response.msg,
+      messageId: response.data?.message_id,
+    });
+
+    if (response.code !== 0) {
+      throw new Error(`Feishu image send failed: ${response.msg} (code: ${response.code})`);
+    }
+
+    const messageId = response.data?.message_id ?? "unknown";
+    const chatId = response.data?.chat_id ?? to;
+
+    console.log("[feishu:send] Successfully sent image message");
+    return { messageId, chatId };
+  } catch (error) {
+    console.error("[feishu:send] Send failed:", error);
+    throw error;
   }
-
-  const messageId = response.data?.message_id ?? "unknown";
-  const chatId = response.data?.chat_id ?? to;
-
-  return { messageId, chatId };
 }
 
 /**
@@ -153,6 +174,7 @@ export async function replyFeishuText(params: {
 
 /**
  * Upload an image to Feishu and get the image_key.
+ * 步骤二：上传图片获取 image_key
  */
 export async function uploadFeishuImage(params: {
   cfg: ClawdbotConfig;
@@ -163,6 +185,12 @@ export async function uploadFeishuImage(params: {
   const feishuCfg = cfg.channels?.feishu;
   const credentials = resolveFeishuCredentials(feishuCfg);
 
+  console.log("[feishu:upload] Starting image upload:", {
+    imageSize: image.length,
+    imageType,
+    hasCredentials: Boolean(credentials),
+  });
+
   if (!credentials) {
     throw new Error("Feishu credentials not configured");
   }
@@ -171,24 +199,37 @@ export async function uploadFeishuImage(params: {
 
   // Convert Buffer to Stream for Feishu SDK
   const imageStream = Readable.from(image);
+  console.log("[feishu:upload] Created image stream from buffer");
 
-  const response = await client.im.image.create({
-    data: {
-      image_type: imageType,
-      image: imageStream,
-    },
-  });
+  try {
+    const response = await client.im.image.create({
+      data: {
+        image_type: imageType,
+        image: imageStream,
+      },
+    });
 
-  if (response.code !== 0) {
-    throw new Error(`Feishu image upload failed: ${response.msg} (code: ${response.code})`);
+    console.log("[feishu:upload] Upload response:", {
+      code: response.code,
+      msg: response.msg,
+      hasImageKey: Boolean(response.data?.image_key),
+    });
+
+    if (response.code !== 0) {
+      throw new Error(`Feishu image upload failed: ${response.msg} (code: ${response.code})`);
+    }
+
+    const imageKey = response.data?.image_key;
+    if (!imageKey) {
+      throw new Error("Feishu image upload returned no image_key");
+    }
+
+    console.log("[feishu:upload] Successfully uploaded image, image_key:", imageKey);
+    return imageKey;
+  } catch (error) {
+    console.error("[feishu:upload] Upload failed:", error);
+    throw error;
   }
-
-  const imageKey = response.data?.image_key;
-  if (!imageKey) {
-    throw new Error("Feishu image upload returned no image_key");
-  }
-
-  return imageKey;
 }
 
 /**
