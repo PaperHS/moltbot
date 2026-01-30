@@ -1,8 +1,4 @@
-import {
-  ensureAuthProfileStore,
-  resolveAuthProfileDisplayLabel,
-} from "../../agents/auth-profiles.js";
-import { loadConfig } from "../../config/config.js";
+import { ensureAuthProfileStore } from "../../agents/auth-profiles.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import { renderTable } from "../../terminal/table.js";
 
@@ -36,7 +32,6 @@ export async function modelsAuthListCommand(
   },
   runtime: RuntimeEnv,
 ) {
-  const cfg = loadConfig();
   const store = ensureAuthProfileStore();
 
   const profiles = Object.entries(store.profiles);
@@ -54,7 +49,6 @@ export async function modelsAuthListCommand(
       continue;
     }
 
-    const displayLabel = resolveAuthProfileDisplayLabel({ cfg, store, profileId });
     const email =
       "email" in profile && typeof profile.email === "string" ? profile.email : undefined;
 
