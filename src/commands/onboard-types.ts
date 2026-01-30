@@ -20,6 +20,7 @@ export type AuthChoice =
   | "codex-cli"
   | "apiKey"
   | "gemini-api-key"
+  | "google-proxy-api-key"
   | "google-antigravity"
   | "google-gemini-cli"
   | "zai-api-key"
@@ -67,6 +68,8 @@ export type OnboardOptions = {
   moonshotApiKey?: string;
   kimiCodeApiKey?: string;
   geminiApiKey?: string;
+  googleProxyApiKey?: string;
+  googleProxyBaseUrl?: string;
   zaiApiKey?: string;
   xiaomiApiKey?: string;
   minimaxApiKey?: string;

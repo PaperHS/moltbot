@@ -20,6 +20,17 @@ export const KIMI_CODE_MAX_TOKENS = 32768;
 export const KIMI_CODE_HEADERS = { "User-Agent": "KimiCLI/0.77" } as const;
 export const KIMI_CODE_COMPAT = { supportsDeveloperRole: false } as const;
 
+export const GOOGLE_PROXY_DEFAULT_MODEL_ID = "gemini-3-pro-preview";
+export const GOOGLE_PROXY_DEFAULT_MODEL_REF = `google-proxy/${GOOGLE_PROXY_DEFAULT_MODEL_ID}`;
+export const GOOGLE_PROXY_CONTEXT_WINDOW = 1000000;
+export const GOOGLE_PROXY_MAX_TOKENS = 8192;
+export const GOOGLE_PROXY_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
 // Pricing: MiniMax doesn't publish public rates. Override in models.json for accurate costs.
 export const MINIMAX_API_COST = {
   input: 15,
@@ -114,5 +125,17 @@ export function buildKimiCodeModelDefinition(): ModelDefinitionConfig {
     maxTokens: KIMI_CODE_MAX_TOKENS,
     headers: KIMI_CODE_HEADERS,
     compat: KIMI_CODE_COMPAT,
+  };
+}
+
+export function buildGoogleProxyModelDefinition(): ModelDefinitionConfig {
+  return {
+    id: GOOGLE_PROXY_DEFAULT_MODEL_ID,
+    name: "Gemini 3 Pro Preview (Proxy)",
+    reasoning: false,
+    input: ["text"],
+    cost: GOOGLE_PROXY_DEFAULT_COST,
+    contextWindow: GOOGLE_PROXY_CONTEXT_WINDOW,
+    maxTokens: GOOGLE_PROXY_MAX_TOKENS,
   };
 }

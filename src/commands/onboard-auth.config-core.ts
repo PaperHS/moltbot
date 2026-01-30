@@ -13,14 +13,17 @@ import {
 } from "../agents/venice-models.js";
 import type { OpenClawConfig } from "../config/config.js";
 import {
+  GOOGLE_PROXY_DEFAULT_MODEL_REF,
   OPENROUTER_DEFAULT_MODEL_REF,
   VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF,
   XIAOMI_DEFAULT_MODEL_REF,
   ZAI_DEFAULT_MODEL_REF,
 } from "./onboard-auth.credentials.js";
 import {
+  buildGoogleProxyModelDefinition,
   buildKimiCodeModelDefinition,
   buildMoonshotModelDefinition,
+  GOOGLE_PROXY_DEFAULT_MODEL_ID,
   KIMI_CODE_BASE_URL,
   KIMI_CODE_MODEL_ID,
   KIMI_CODE_MODEL_REF,
@@ -529,6 +532,82 @@ export function applyAuthProfileConfig(
       ...cfg.auth,
       profiles,
       ...(order ? { order } : {}),
+    },
+  };
+}
+
+export function applyGoogleProxyProviderConfig(
+  cfg: MoltbotConfig,
+  baseUrl?: string,
+): MoltbotConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[GOOGLE_PROXY_DEFAULT_MODEL_REF] = {
+    ...models[GOOGLE_PROXY_DEFAULT_MODEL_REF],
+    alias: models[GOOGLE_PROXY_DEFAULT_MODEL_REF]?.alias ?? "Google Proxy",
+  };
+
+  const providers = { ...cfg.models?.providers };
+  const existingProvider = providers["google-proxy"];
+  const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
+  const defaultModel = buildGoogleProxyModelDefinition();
+  const hasDefaultModel = existingModels.some(
+    (model) => model.id === GOOGLE_PROXY_DEFAULT_MODEL_ID,
+  );
+  const mergedModels = hasDefaultModel ? existingModels : [...existingModels, defaultModel];
+
+  const {
+    apiKey: existingApiKey,
+    baseUrl: existingBaseUrl,
+    ...existingProviderRest
+  } = (existingProvider ?? {}) as Record<string, unknown> as { apiKey?: string; baseUrl?: string };
+
+  const resolvedApiKey = typeof existingApiKey === "string" ? existingApiKey : undefined;
+  const normalizedApiKey = resolvedApiKey?.trim();
+  const resolvedBaseUrl =
+    baseUrl || existingBaseUrl || "https://generativelanguage.googleapis.com/v1beta";
+
+  providers["google-proxy"] = {
+    ...existingProviderRest,
+    baseUrl: resolvedBaseUrl,
+    api: "google-generative-ai",
+    ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
+    models: mergedModels.length > 0 ? mergedModels : [defaultModel],
+  };
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+      },
+    },
+    models: {
+      mode: cfg.models?.mode ?? "merge",
+      providers,
+    },
+  };
+}
+
+export function applyGoogleProxyConfig(cfg: MoltbotConfig, baseUrl?: string): MoltbotConfig {
+  const next = applyGoogleProxyProviderConfig(cfg, baseUrl);
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: GOOGLE_PROXY_DEFAULT_MODEL_REF,
+        },
+      },
     },
   };
 }

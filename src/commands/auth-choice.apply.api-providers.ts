@@ -13,6 +13,8 @@ import {
 } from "./google-gemini-model-default.js";
 import {
   applyAuthProfileConfig,
+  applyGoogleProxyConfig,
+  applyGoogleProxyProviderConfig,
   applyKimiCodeConfig,
   applyKimiCodeProviderConfig,
   applyMoonshotConfig,
@@ -30,6 +32,7 @@ import {
   applyXiaomiConfig,
   applyXiaomiProviderConfig,
   applyZaiConfig,
+  GOOGLE_PROXY_DEFAULT_MODEL_REF,
   KIMI_CODE_MODEL_REF,
   MOONSHOT_DEFAULT_MODEL_REF,
   OPENROUTER_DEFAULT_MODEL_REF,
@@ -38,6 +41,7 @@ import {
   VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF,
   XIAOMI_DEFAULT_MODEL_REF,
   setGeminiApiKey,
+  setGoogleProxyApiKey,
   setKimiCodeApiKey,
   setMoonshotApiKey,
   setOpencodeZenApiKey,
@@ -81,6 +85,8 @@ export async function applyAuthChoiceApiProviders(
       authChoice = "kimi-code-api-key";
     } else if (params.opts.tokenProvider === "google") {
       authChoice = "gemini-api-key";
+    } else if (params.opts.tokenProvider === "google-proxy") {
+      authChoice = "google-proxy-api-key";
     } else if (params.opts.tokenProvider === "zai") {
       authChoice = "zai-api-key";
     } else if (params.opts.tokenProvider === "xiaomi") {
@@ -370,6 +376,64 @@ export async function applyAuthChoiceApiProviders(
     } else {
       agentModelOverride = GOOGLE_GEMINI_DEFAULT_MODEL;
       await noteAgentModel(GOOGLE_GEMINI_DEFAULT_MODEL);
+    }
+    return { config: nextConfig, agentModelOverride };
+  }
+
+  if (authChoice === "google-proxy-api-key") {
+    let hasCredential = false;
+    let baseUrl: string | undefined;
+
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "google-proxy") {
+      await setGoogleProxyApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
+      hasCredential = true;
+      baseUrl = params.opts.googleProxyBaseUrl;
+    }
+
+    const envKey = resolveEnvApiKey("google-proxy");
+    if (envKey) {
+      const useExisting = await params.prompter.confirm({
+        message: `Use existing GOOGLE_PROXY_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
+        initialValue: true,
+      });
+      if (useExisting) {
+        await setGoogleProxyApiKey(envKey.apiKey, params.agentDir);
+        hasCredential = true;
+      }
+    }
+
+    if (!hasCredential) {
+      const key = await params.prompter.text({
+        message: "Enter Google Proxy API key",
+        validate: validateApiKeyInput,
+      });
+      await setGoogleProxyApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+    }
+
+    if (!baseUrl) {
+      baseUrl = await params.prompter.text({
+        message: "Enter Google Proxy base URL",
+        initialValue: "https://generativelanguage.googleapis.com/v1beta",
+      });
+    }
+
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "google-proxy:default",
+      provider: "google-proxy",
+      mode: "api_key",
+    });
+
+    nextConfig = applyGoogleProxyProviderConfig(nextConfig, baseUrl);
+
+    if (params.setDefaultModel) {
+      nextConfig = applyGoogleProxyConfig(nextConfig, baseUrl);
+      await params.prompter.note(
+        `Default model set to ${GOOGLE_PROXY_DEFAULT_MODEL_REF}`,
+        "Model configured",
+      );
+    } else {
+      agentModelOverride = GOOGLE_PROXY_DEFAULT_MODEL_REF;
+      await noteAgentModel(GOOGLE_PROXY_DEFAULT_MODEL_REF);
     }
     return { config: nextConfig, agentModelOverride };
   }
