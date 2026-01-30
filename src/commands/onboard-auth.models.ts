@@ -20,7 +20,7 @@ export const KIMI_CODE_MAX_TOKENS = 32768;
 export const KIMI_CODE_HEADERS = { "User-Agent": "KimiCLI/0.77" } as const;
 export const KIMI_CODE_COMPAT = { supportsDeveloperRole: false } as const;
 
-export const GOOGLE_PROXY_DEFAULT_MODEL_ID = "gemini-3-pro-preview";
+export const GOOGLE_PROXY_DEFAULT_MODEL_ID = "gemini-3-pro-high";
 export const GOOGLE_PROXY_DEFAULT_MODEL_REF = `google-proxy/${GOOGLE_PROXY_DEFAULT_MODEL_ID}`;
 export const GOOGLE_PROXY_CONTEXT_WINDOW = 1000000;
 export const GOOGLE_PROXY_MAX_TOKENS = 8192;
@@ -30,6 +30,40 @@ export const GOOGLE_PROXY_DEFAULT_COST = {
   cacheRead: 0,
   cacheWrite: 0,
 };
+
+// Google Proxy model catalog
+export const GOOGLE_PROXY_MODEL_CATALOG = {
+  "gemini-3-pro-high": {
+    name: "Gemini 3 Pro High",
+    reasoning: true,
+    contextWindow: 1000000,
+    maxTokens: 8192,
+    input: ["text"] as const,
+  },
+  "gemini-3-flash": {
+    name: "Gemini 3 Flash",
+    reasoning: false,
+    contextWindow: 1000000,
+    maxTokens: 8192,
+    input: ["text"] as const,
+  },
+  "gemini-2.5-flash": {
+    name: "Gemini 2.5 Flash",
+    reasoning: false,
+    contextWindow: 1000000,
+    maxTokens: 8192,
+    input: ["text"] as const,
+  },
+  "gemini-3-pro-image": {
+    name: "Gemini 3 Pro Image",
+    reasoning: false,
+    contextWindow: 1000000,
+    maxTokens: 8192,
+    input: ["text", "image"] as const,
+  },
+} as const;
+
+type GoogleProxyCatalogId = keyof typeof GOOGLE_PROXY_MODEL_CATALOG;
 
 // Pricing: MiniMax doesn't publish public rates. Override in models.json for accurate costs.
 export const MINIMAX_API_COST = {
@@ -128,14 +162,32 @@ export function buildKimiCodeModelDefinition(): ModelDefinitionConfig {
   };
 }
 
-export function buildGoogleProxyModelDefinition(): ModelDefinitionConfig {
+export function buildGoogleProxyModelDefinition(
+  modelId?: GoogleProxyCatalogId,
+): ModelDefinitionConfig {
+  const id = modelId ?? GOOGLE_PROXY_DEFAULT_MODEL_ID;
+  const catalog = GOOGLE_PROXY_MODEL_CATALOG[id as GoogleProxyCatalogId];
+
+  if (!catalog) {
+    // Fallback for unknown models
+    return {
+      id,
+      name: `Google Proxy ${id}`,
+      reasoning: false,
+      input: ["text"],
+      cost: GOOGLE_PROXY_DEFAULT_COST,
+      contextWindow: GOOGLE_PROXY_CONTEXT_WINDOW,
+      maxTokens: GOOGLE_PROXY_MAX_TOKENS,
+    };
+  }
+
   return {
-    id: GOOGLE_PROXY_DEFAULT_MODEL_ID,
-    name: "Gemini 3 Pro Preview (Proxy)",
-    reasoning: false,
-    input: ["text"],
+    id,
+    name: catalog.name,
+    reasoning: catalog.reasoning,
+    input: [...catalog.input],
     cost: GOOGLE_PROXY_DEFAULT_COST,
-    contextWindow: GOOGLE_PROXY_CONTEXT_WINDOW,
-    maxTokens: GOOGLE_PROXY_MAX_TOKENS,
+    contextWindow: catalog.contextWindow,
+    maxTokens: catalog.maxTokens,
   };
 }

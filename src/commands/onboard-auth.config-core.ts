@@ -23,7 +23,7 @@ import {
   buildGoogleProxyModelDefinition,
   buildKimiCodeModelDefinition,
   buildMoonshotModelDefinition,
-  GOOGLE_PROXY_DEFAULT_MODEL_ID,
+  GOOGLE_PROXY_MODEL_CATALOG,
   KIMI_CODE_BASE_URL,
   KIMI_CODE_MODEL_ID,
   KIMI_CODE_MODEL_REF,
@@ -543,17 +543,26 @@ export function applyGoogleProxyProviderConfig(
   const models = { ...cfg.agents?.defaults?.models };
   models[GOOGLE_PROXY_DEFAULT_MODEL_REF] = {
     ...models[GOOGLE_PROXY_DEFAULT_MODEL_REF],
-    alias: models[GOOGLE_PROXY_DEFAULT_MODEL_REF]?.alias ?? "Google Proxy",
+    alias: models[GOOGLE_PROXY_DEFAULT_MODEL_REF]?.alias ?? "Gemini 3 Pro High",
   };
 
   const providers = { ...cfg.models?.providers };
   const existingProvider = providers["google-proxy"];
   const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
-  const defaultModel = buildGoogleProxyModelDefinition();
-  const hasDefaultModel = existingModels.some(
-    (model) => model.id === GOOGLE_PROXY_DEFAULT_MODEL_ID,
-  );
-  const mergedModels = hasDefaultModel ? existingModels : [...existingModels, defaultModel];
+
+  // Build all Google Proxy models from catalog
+  const catalogModelIds = Object.keys(GOOGLE_PROXY_MODEL_CATALOG) as Array<
+    keyof typeof GOOGLE_PROXY_MODEL_CATALOG
+  >;
+  const googleProxyModels = catalogModelIds.map((id) => buildGoogleProxyModelDefinition(id));
+
+  // Merge with existing models, avoiding duplicates
+  const mergedModels = [
+    ...existingModels,
+    ...googleProxyModels.filter(
+      (model) => !existingModels.some((existing) => existing.id === model.id),
+    ),
+  ];
 
   const {
     apiKey: existingApiKey,
@@ -571,7 +580,7 @@ export function applyGoogleProxyProviderConfig(
     baseUrl: resolvedBaseUrl,
     api: "google-generative-ai",
     ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
-    models: mergedModels.length > 0 ? mergedModels : [defaultModel],
+    models: mergedModels.length > 0 ? mergedModels : googleProxyModels,
   };
 
   return {
