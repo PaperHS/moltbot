@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import type { ChannelOutboundAdapter } from "clawdbot/plugin-sdk";
 
 import { getFeishuRuntime } from "./runtime.js";
@@ -9,6 +10,22 @@ import {
   sendFeishuFile,
   detectFeishuFileType,
 } from "./send.js";
+
+/**
+ * Determine if the URL is a local file path.
+ */
+function isLocalFilePath(url: string): boolean {
+  // Check if it's NOT a remote URL or data URL
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+    return false;
+  }
+  // Check if file exists
+  try {
+    return fs.existsSync(url);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Download media from URL.
@@ -70,6 +87,31 @@ export const feishuOutbound: ChannelOutboundAdapter = {
           if (base64Data) {
             buffer = Buffer.from(base64Data, "base64");
           }
+        }
+      } else if (isLocalFilePath(mediaUrl)) {
+        // Handle local file path
+        try {
+          buffer = fs.readFileSync(mediaUrl);
+          // Try to detect content type from file extension
+          const ext = mediaUrl.toLowerCase().split(".").pop()?.split("?")[0];
+          if (ext === "png") contentType = "image/png";
+          else if (ext === "jpg" || ext === "jpeg") contentType = "image/jpeg";
+          else if (ext === "gif") contentType = "image/gif";
+          else if (ext === "webp") contentType = "image/webp";
+          else if (ext === "mp3") contentType = "audio/mpeg";
+          else if (ext === "wav") contentType = "audio/wav";
+          else if (ext === "ogg") contentType = "audio/ogg";
+          else if (ext === "opus") contentType = "audio/opus";
+          else if (ext === "mp4") contentType = "video/mp4";
+          else if (ext === "pdf") contentType = "application/pdf";
+        } catch (error) {
+          // Fallback: send as text link if read fails
+          const result = await sendFeishuText({
+            cfg,
+            to,
+            text: `[Local file: ${mediaUrl}]`,
+          });
+          return { channel: "feishu", ...result };
         }
       } else {
         // Download from remote URL
