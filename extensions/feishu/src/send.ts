@@ -381,3 +381,49 @@ export async function downloadFeishuImage(params: {
 
   throw new Error("Feishu image download returned unexpected format");
 }
+
+/**
+ * Get message content by message_id.
+ * Used to fetch quoted/referenced message details.
+ */
+export async function getFeishuMessage(params: {
+  cfg: ClawdbotConfig;
+  messageId: string;
+}): Promise<{
+  messageType?: string;
+  content?: string;
+  senderId?: string;
+  senderName?: string;
+} | null> {
+  const { cfg, messageId } = params;
+  const feishuCfg = cfg.channels?.feishu;
+  const credentials = resolveFeishuCredentials(feishuCfg);
+
+  if (!credentials) {
+    throw new Error("Feishu credentials not configured");
+  }
+
+  const client = getFeishuClient(credentials);
+
+  try {
+    const response = await client.im.message.get({
+      path: {
+        message_id: messageId,
+      },
+    });
+
+    if (response.code !== 0 || !response.data?.items?.[0]) {
+      return null;
+    }
+
+    const message = response.data.items[0];
+    return {
+      messageType: message.msg_type,
+      content: message.body?.content,
+      senderId: message.sender?.id?.open_id,
+      senderName: message.sender?.sender_type === "user" ? undefined : message.sender?.sender_type,
+    };
+  } catch {
+    return null;
+  }
+}

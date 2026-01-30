@@ -8,9 +8,11 @@ import {
   extractMessageId,
   extractMessageText,
   extractImageKey,
+  extractParentId,
   isPrivateChat,
   isGroupChat,
   wasBotMentioned,
+  parseFeishuTextContent,
 } from "./inbound.js";
 import {
   downloadFeishuImage,
@@ -20,6 +22,7 @@ import {
   uploadFeishuFile,
   sendFeishuFile,
   detectFeishuFileType,
+  getFeishuMessage,
 } from "./send.js";
 import { getFeishuRuntime } from "./runtime.js";
 
@@ -122,15 +125,36 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
   // Extract message content
   const text = extractMessageText(event);
   const imageKey = extractImageKey(event);
+  const parentId = extractParentId(event);
 
-  console.log("[feishu] extracted content:", { text, imageKey });
+  console.log("[feishu] extracted content:", { text, imageKey, parentId });
 
   if (!text && !imageKey) {
     console.log("[feishu] no text or image content, skipping");
     return;
   }
 
-  console.log("[feishu] handling message:", { senderId, chatId, messageId, hasText: Boolean(text), hasImage: Boolean(imageKey) });
+  console.log("[feishu] handling message:", { senderId, chatId, messageId, hasText: Boolean(text), hasImage: Boolean(imageKey), hasParent: Boolean(parentId) });
+
+  // Fetch quoted message if present
+  let replyToBody: string | undefined;
+  let replyToSender: string | undefined;
+  if (parentId) {
+    try {
+      const quotedMessage = await getFeishuMessage({ cfg, messageId: parentId });
+      if (quotedMessage?.content && quotedMessage.messageType === "text") {
+        const parsed = parseFeishuTextContent(quotedMessage.content);
+        replyToBody = parsed?.text;
+      }
+      replyToSender = quotedMessage?.senderId;
+      console.log("[feishu] fetched quoted message:", { replyToBody, replyToSender });
+    } catch (err) {
+      log.debug("failed to fetch quoted message", {
+        error: err instanceof Error ? err.message : String(err),
+        parentId,
+      });
+    }
+  }
 
   // Handle image if present
   let imageBuffer: Buffer | undefined;
@@ -174,6 +198,14 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
     Provider: "feishu" as const,
     Surface: "feishu" as const,
     MessageSid: messageId,
+    ...(parentId
+      ? {
+          ReplyToId: parentId,
+          ReplyToBody: replyToBody,
+          ReplyToSender: replyToSender,
+          ReplyToIsQuote: true,
+        }
+      : {}),
     ...(imageBuffer
       ? {
           Media: [{ buffer: imageBuffer, mimeType: "image/png" }],

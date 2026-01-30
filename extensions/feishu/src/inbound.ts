@@ -119,3 +119,17 @@ export function extractImageKey(event: FeishuMessageEvent): string | null {
   const parsed = parseFeishuImageContent(content);
   return parsed?.image_key ?? null;
 }
+
+/**
+ * Extract parent message ID (for quoted/replied messages).
+ */
+export function extractParentId(event: FeishuMessageEvent): string | undefined {
+  return event.message?.parent_id ?? event.event?.message?.parent_id;
+}
+
+/**
+ * Extract root message ID (for thread root).
+ */
+export function extractRootId(event: FeishuMessageEvent): string | undefined {
+  return event.message?.root_id ?? event.event?.message?.root_id;
+}
