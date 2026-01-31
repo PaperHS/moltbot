@@ -1,6 +1,20 @@
 import type { FeishuMessageEvent, FeishuTextContent, FeishuImageContent } from "./types.js";
 
 /**
+ * Feishu Post (rich text) content structure.
+ */
+type FeishuPostElement =
+  | { tag: "text"; text: string }
+  | { tag: "at"; user_id: string; user_name?: string }
+  | { tag: "img"; image_key: string; width?: number; height?: number }
+  | { tag: string; [key: string]: unknown };
+
+type FeishuPostContent = {
+  title?: string;
+  content?: FeishuPostElement[][];
+};
+
+/**
  * Parse text content from Feishu message.
  */
 export function parseFeishuTextContent(content: string): FeishuTextContent | null {
@@ -22,6 +36,54 @@ export function parseFeishuImageContent(content: string): FeishuImageContent | n
   } catch {
     return null;
   }
+}
+
+/**
+ * Parse post (rich text) content from Feishu message.
+ */
+export function parseFeishuPostContent(content: string): FeishuPostContent | null {
+  try {
+    const parsed = JSON.parse(content) as FeishuPostContent;
+    return parsed.content ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract text from post content, stripping @mentions.
+ */
+export function extractTextFromPost(post: FeishuPostContent): string {
+  if (!post.content) return "";
+
+  const textParts: string[] = [];
+  for (const line of post.content) {
+    for (const element of line) {
+      if (element.tag === "text" && "text" in element) {
+        textParts.push(element.text);
+      }
+    }
+  }
+
+  return textParts.join("").trim();
+}
+
+/**
+ * Extract all image keys from post content.
+ */
+export function extractImageKeysFromPost(post: FeishuPostContent): string[] {
+  if (!post.content) return [];
+
+  const imageKeys: string[] = [];
+  for (const line of post.content) {
+    for (const element of line) {
+      if (element.tag === "img" && "image_key" in element && typeof element.image_key === "string") {
+        imageKeys.push(element.image_key);
+      }
+    }
+  }
+
+  return imageKeys;
 }
 
 /**
@@ -92,32 +154,65 @@ export function stripMentionTags(text: string): string {
 
 /**
  * Extract text from message event, stripping mentions.
+ * Supports both "text" and "post" (rich text) message types.
  */
 export function extractMessageText(event: FeishuMessageEvent): string | null {
   const content = event.message?.content ?? event.event?.message?.content;
   if (!content) return null;
 
   const messageType = event.message?.message_type ?? event.event?.message?.message_type;
-  if (messageType !== "text") return null;
 
-  const parsed = parseFeishuTextContent(content);
-  if (!parsed) return null;
+  // Handle simple text messages
+  if (messageType === "text") {
+    const parsed = parseFeishuTextContent(content);
+    if (!parsed) return null;
+    return stripMentionTags(parsed.text);
+  }
 
-  return stripMentionTags(parsed.text);
+  // Handle rich text (post) messages
+  if (messageType === "post") {
+    const parsed = parseFeishuPostContent(content);
+    if (!parsed) return null;
+    const text = extractTextFromPost(parsed);
+    return stripMentionTags(text);
+  }
+
+  return null;
 }
 
 /**
- * Extract image key from message event.
+ * Extract image keys from message event.
+ * Supports both "image" (single image) and "post" (rich text with images) message types.
+ * Returns an array of image keys (empty if no images).
  */
-export function extractImageKey(event: FeishuMessageEvent): string | null {
+export function extractImageKeys(event: FeishuMessageEvent): string[] {
   const content = event.message?.content ?? event.event?.message?.content;
-  if (!content) return null;
+  if (!content) return [];
 
   const messageType = event.message?.message_type ?? event.event?.message?.message_type;
-  if (messageType !== "image") return null;
 
-  const parsed = parseFeishuImageContent(content);
-  return parsed?.image_key ?? null;
+  // Handle simple image messages
+  if (messageType === "image") {
+    const parsed = parseFeishuImageContent(content);
+    return parsed?.image_key ? [parsed.image_key] : [];
+  }
+
+  // Handle rich text (post) messages with embedded images
+  if (messageType === "post") {
+    const parsed = parseFeishuPostContent(content);
+    return parsed ? extractImageKeysFromPost(parsed) : [];
+  }
+
+  return [];
+}
+
+/**
+ * @deprecated Use extractImageKeys instead (returns array)
+ * Extract image key from message event (legacy single-image support).
+ */
+export function extractImageKey(event: FeishuMessageEvent): string | null {
+  const keys = extractImageKeys(event);
+  return keys.length > 0 ? keys[0] : null;
 }
 
 /**

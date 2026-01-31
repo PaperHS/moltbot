@@ -7,7 +7,7 @@ import {
   extractChatId,
   extractMessageId,
   extractMessageText,
-  extractImageKey,
+  extractImageKeys,
   extractParentId,
   isPrivateChat,
   isGroupChat,
@@ -124,17 +124,24 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
 
   // Extract message content
   const text = extractMessageText(event);
-  const imageKey = extractImageKey(event);
+  const imageKeys = extractImageKeys(event);
   const parentId = extractParentId(event);
 
-  console.log("[feishu] extracted content:", { text, imageKey, parentId });
+  console.log("[feishu] extracted content:", { text, imageKeys, parentId });
 
-  if (!text && !imageKey) {
+  if (!text && imageKeys.length === 0) {
     console.log("[feishu] no text or image content, skipping");
     return;
   }
 
-  console.log("[feishu] handling message:", { senderId, chatId, messageId, hasText: Boolean(text), hasImage: Boolean(imageKey), hasParent: Boolean(parentId) });
+  console.log("[feishu] handling message:", {
+    senderId,
+    chatId,
+    messageId,
+    hasText: Boolean(text),
+    imageCount: imageKeys.length,
+    hasParent: Boolean(parentId),
+  });
 
   // Fetch quoted message if present
   let replyToBody: string | undefined;
@@ -156,16 +163,17 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
     }
   }
 
-  // Handle image if present
-  let imageBuffer: Buffer | undefined;
-  if (imageKey) {
+  // Download all images if present
+  const imageBuffers: Buffer[] = [];
+  for (const imageKey of imageKeys) {
     try {
-      imageBuffer = await downloadFeishuImage({
+      const buffer = await downloadFeishuImage({
         cfg,
         messageId,
         imageKey,
       });
-      log.debug("downloaded image", { imageKey, size: imageBuffer.length });
+      imageBuffers.push(buffer);
+      log.debug("downloaded image", { imageKey, size: buffer.length });
     } catch (err) {
       log.error("failed to download image", {
         error: err instanceof Error ? err.message : String(err),
@@ -215,9 +223,9 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
           ReplyToIsQuote: true,
         }
       : {}),
-    ...(imageBuffer
+    ...(imageBuffers.length > 0
       ? {
-          Media: [{ buffer: imageBuffer, mimeType: "image/png" }],
+          Media: imageBuffers.map((buffer) => ({ buffer, mimeType: "image/png" })),
         }
       : {}),
   });
@@ -228,6 +236,7 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
     ReplyToId: ctxPayload.ReplyToId,
     ReplyToBody: ctxPayload.ReplyToBody ? `${ctxPayload.ReplyToBody.substring(0, 100)}...` : undefined,
     ReplyToIsQuote: ctxPayload.ReplyToIsQuote,
+    mediaCount: imageBuffers.length,
   });
 
   // Create dispatcher using the proper reply dispatcher pattern
