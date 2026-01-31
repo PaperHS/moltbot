@@ -164,8 +164,10 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
   }
 
   // Download all images if present
+  console.log("[feishu] Starting image download, count:", imageKeys.length);
   const imageBuffers: Buffer[] = [];
   for (const imageKey of imageKeys) {
+    console.log("[feishu] Downloading image:", imageKey);
     try {
       const buffer = await downloadFeishuImage({
         cfg,
@@ -173,14 +175,17 @@ export async function handleFeishuMessage(opts: HandleFeishuMessageOpts): Promis
         imageKey,
       });
       imageBuffers.push(buffer);
+      console.log("[feishu] Downloaded image successfully:", { imageKey, size: buffer.length });
       log.debug("downloaded image", { imageKey, size: buffer.length });
     } catch (err) {
+      console.error("[feishu] Failed to download image:", imageKey, err);
       log.error("failed to download image", {
         error: err instanceof Error ? err.message : String(err),
         imageKey,
       });
     }
   }
+  console.log("[feishu] Image download complete, buffers:", imageBuffers.length);
 
   // Determine reply target (chat_id for groups, sender open_id for DMs)
   const replyTo = isPrivate ? senderId : chatId;
