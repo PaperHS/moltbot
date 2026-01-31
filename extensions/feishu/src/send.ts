@@ -433,6 +433,8 @@ export async function downloadFeishuImage(params: {
 
   const client = getFeishuClient(credentials);
 
+  console.log("[feishu:download] Downloading image:", { messageId, imageKey });
+
   const response = await client.im.messageResource.get({
     path: {
       message_id: messageId,
@@ -443,6 +445,12 @@ export async function downloadFeishuImage(params: {
     },
   });
 
+  console.log("[feishu:download] Response type:", typeof response);
+  console.log("[feishu:download] Response constructor:", response?.constructor?.name);
+  console.log("[feishu:download] Is Buffer:", Buffer.isBuffer(response));
+  console.log("[feishu:download] Has read method:", typeof (response as any)?.read);
+  console.log("[feishu:download] Response keys:", response ? Object.keys(response).slice(0, 10) : []);
+
   // The response should be a readable stream or buffer
   if (!response) {
     throw new Error("Feishu image download returned no data");
@@ -450,6 +458,7 @@ export async function downloadFeishuImage(params: {
 
   // Handle stream response
   if (typeof (response as NodeJS.ReadableStream).read === "function") {
+    console.log("[feishu:download] Handling as stream");
     const chunks: Buffer[] = [];
     for await (const chunk of response as AsyncIterable<Buffer>) {
       chunks.push(Buffer.from(chunk));
@@ -459,9 +468,23 @@ export async function downloadFeishuImage(params: {
 
   // Handle buffer response
   if (Buffer.isBuffer(response)) {
+    console.log("[feishu:download] Handling as buffer");
     return response;
   }
 
+  // Handle WriteStream response (axios returns WriteStream from file download)
+  if (response && typeof response === "object" && "data" in response) {
+    console.log("[feishu:download] Handling as response with data property");
+    const data = (response as any).data;
+    if (Buffer.isBuffer(data)) {
+      return data;
+    }
+    if (data && typeof data === "object") {
+      return Buffer.from(JSON.stringify(data));
+    }
+  }
+
+  console.error("[feishu:download] Unexpected response format:", response);
   throw new Error("Feishu image download returned unexpected format");
 }
 
