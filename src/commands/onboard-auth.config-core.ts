@@ -13,13 +13,16 @@ import {
   VENICE_MODEL_CATALOG,
 } from "../agents/venice-models.js";
 import {
+  GOOGLE_PROXY_DEFAULT_MODEL_REF,
   OPENROUTER_DEFAULT_MODEL_REF,
   VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF,
   XIAOMI_DEFAULT_MODEL_REF,
   ZAI_DEFAULT_MODEL_REF,
 } from "./onboard-auth.credentials.js";
 import {
+  buildGoogleProxyModelDefinition,
   buildMoonshotModelDefinition,
+  GOOGLE_PROXY_MODEL_CATALOG,
   KIMI_CODING_MODEL_REF,
   MOONSHOT_BASE_URL,
   MOONSHOT_DEFAULT_MODEL_ID,
@@ -502,6 +505,94 @@ export function applyAuthProfileConfig(
       ...cfg.auth,
       profiles,
       ...(order ? { order } : {}),
+    },
+  };
+}
+
+/**
+ * Apply Google Proxy provider configuration without changing the default model.
+ * Registers Google Proxy models and sets up the provider with custom baseUrl support.
+ * Note: baseUrl is required for Google Proxy since it's a custom endpoint.
+ */
+export function applyGoogleProxyProviderConfig(
+  cfg: OpenClawConfig,
+  baseUrl: string,
+): OpenClawConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[GOOGLE_PROXY_DEFAULT_MODEL_REF] = {
+    ...models[GOOGLE_PROXY_DEFAULT_MODEL_REF],
+    alias: models[GOOGLE_PROXY_DEFAULT_MODEL_REF]?.alias ?? "Gemini 3 Pro",
+  };
+
+  const providers = { ...cfg.models?.providers };
+  const existingProvider = providers["google-proxy"];
+  const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
+
+  // Build all models from catalog
+  const googleProxyModels = Object.keys(GOOGLE_PROXY_MODEL_CATALOG).map((modelId) =>
+    buildGoogleProxyModelDefinition(modelId as keyof typeof GOOGLE_PROXY_MODEL_CATALOG),
+  );
+
+  const mergedModels = [
+    ...existingModels,
+    ...googleProxyModels.filter(
+      (model) => !existingModels.some((existing) => existing.id === model.id),
+    ),
+  ];
+
+  const { apiKey: existingApiKey, ...existingProviderRest } = (existingProvider ?? {}) as Record<
+    string,
+    unknown
+  > as { apiKey?: string };
+  const resolvedApiKey = typeof existingApiKey === "string" ? existingApiKey : undefined;
+  const normalizedApiKey = resolvedApiKey?.trim();
+
+  providers["google-proxy"] = {
+    ...existingProviderRest,
+    baseUrl,
+    api: "google-generative-ai",
+    ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
+    models: mergedModels.length > 0 ? mergedModels : googleProxyModels,
+  };
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+      },
+    },
+    models: {
+      mode: cfg.models?.mode ?? "merge",
+      providers,
+    },
+  };
+}
+
+/**
+ * Apply Google Proxy provider configuration AND set Google Proxy as the default model.
+ * Use this when Google Proxy is the primary provider choice during onboarding.
+ */
+export function applyGoogleProxyConfig(cfg: OpenClawConfig, baseUrl: string): OpenClawConfig {
+  const next = applyGoogleProxyProviderConfig(cfg, baseUrl);
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: GOOGLE_PROXY_DEFAULT_MODEL_REF,
+        },
+      },
     },
   };
 }

@@ -117,6 +117,7 @@ export const ZAI_DEFAULT_MODEL_REF = "zai/glm-4.7";
 export const XIAOMI_DEFAULT_MODEL_REF = "xiaomi/mimo-v2-flash";
 export const OPENROUTER_DEFAULT_MODEL_REF = "openrouter/auto";
 export const VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF = "vercel-ai-gateway/anthropic/claude-opus-4.5";
+export const GOOGLE_PROXY_DEFAULT_MODEL_REF = "google-proxy/gemini-3-pro-high";
 
 export async function setZaiApiKey(key: string, agentDir?: string) {
   // Write to resolved agent dir so gateway finds credentials on startup.
@@ -173,6 +174,18 @@ export async function setOpencodeZenApiKey(key: string, agentDir?: string) {
     credential: {
       type: "api_key",
       provider: "opencode",
+      key,
+    },
+    agentDir: resolveAuthAgentDir(agentDir),
+  });
+}
+
+export async function setGoogleProxyApiKey(key: string, agentDir?: string) {
+  upsertAuthProfile({
+    profileId: "google-proxy:default",
+    credential: {
+      type: "api_key",
+      provider: "google-proxy",
       key,
     },
     agentDir: resolveAuthAgentDir(agentDir),

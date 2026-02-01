@@ -91,3 +91,39 @@ export function buildMoonshotModelDefinition(): ModelDefinitionConfig {
     maxTokens: MOONSHOT_DEFAULT_MAX_TOKENS,
   };
 }
+
+// Google Proxy (self-hosted Gemini endpoints)
+export const GOOGLE_PROXY_DEFAULT_MODEL_ID = "gemini-3-pro-high";
+export const GOOGLE_PROXY_DEFAULT_MODEL_REF = `google-proxy/${GOOGLE_PROXY_DEFAULT_MODEL_ID}`;
+export const GOOGLE_PROXY_CONTEXT_WINDOW = 1000000;
+export const GOOGLE_PROXY_MAX_TOKENS = 8192;
+export const GOOGLE_PROXY_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
+export const GOOGLE_PROXY_MODEL_CATALOG = {
+  "gemini-3-pro-high": { name: "Gemini 3 Pro High", reasoning: false, vision: true },
+  "gemini-3-flash": { name: "Gemini 3 Flash", reasoning: false, vision: true },
+  "gemini-2.5-flash": { name: "Gemini 2.5 Flash", reasoning: false, vision: true },
+  "gemini-3-pro-image": { name: "Gemini 3 Pro Image", reasoning: false, vision: true },
+} as const;
+
+type GoogleProxyCatalogId = keyof typeof GOOGLE_PROXY_MODEL_CATALOG;
+
+export function buildGoogleProxyModelDefinition(
+  modelId: GoogleProxyCatalogId,
+): ModelDefinitionConfig {
+  const catalog = GOOGLE_PROXY_MODEL_CATALOG[modelId];
+  return {
+    id: modelId,
+    name: catalog.name,
+    reasoning: catalog.reasoning,
+    input: catalog.vision ? ["text", "image"] : ["text"],
+    cost: GOOGLE_PROXY_DEFAULT_COST,
+    contextWindow: GOOGLE_PROXY_CONTEXT_WINDOW,
+    maxTokens: GOOGLE_PROXY_MAX_TOKENS,
+  };
+}
