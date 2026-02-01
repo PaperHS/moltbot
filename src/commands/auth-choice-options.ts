@@ -64,7 +64,7 @@ const AUTH_CHOICE_GROUP_DEFS: {
     value: "google",
     label: "Google",
     hint: "Gemini API key + OAuth",
-    choices: ["gemini-api-key", "google-antigravity", "google-gemini-cli"],
+    choices: ["gemini-api-key", "google-proxy-api-key", "google-antigravity", "google-gemini-cli"],
   },
   {
     value: "openrouter",
@@ -160,6 +160,11 @@ export function buildAuthChoiceOptions(params: {
     hint: "Uses GitHub device flow",
   });
   options.push({ value: "gemini-api-key", label: "Google Gemini API key" });
+  options.push({
+    value: "google-proxy-api-key",
+    label: "Google Proxy (self-hosted Gemini)",
+    hint: "Custom Gemini endpoint with custom baseUrl",
+  });
   options.push({
     value: "google-antigravity",
     label: "Google Antigravity OAuth",

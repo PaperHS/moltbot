@@ -13,6 +13,8 @@ import {
 } from "./google-gemini-model-default.js";
 import {
   applyAuthProfileConfig,
+  applyGoogleProxyConfig,
+  applyGoogleProxyProviderConfig,
   applyKimiCodeConfig,
   applyKimiCodeProviderConfig,
   applyMoonshotConfig,
@@ -30,6 +32,7 @@ import {
   applyXiaomiConfig,
   applyXiaomiProviderConfig,
   applyZaiConfig,
+  GOOGLE_PROXY_DEFAULT_MODEL_REF,
   KIMI_CODING_MODEL_REF,
   MOONSHOT_DEFAULT_MODEL_REF,
   OPENROUTER_DEFAULT_MODEL_REF,
@@ -38,6 +41,7 @@ import {
   VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF,
   XIAOMI_DEFAULT_MODEL_REF,
   setGeminiApiKey,
+  setGoogleProxyApiKey,
   setKimiCodingApiKey,
   setMoonshotApiKey,
   setOpencodeZenApiKey,
@@ -86,6 +90,8 @@ export async function applyAuthChoiceApiProviders(
       authChoice = "kimi-code-api-key";
     } else if (params.opts.tokenProvider === "google") {
       authChoice = "gemini-api-key";
+    } else if (params.opts.tokenProvider === "google-proxy") {
+      authChoice = "google-proxy-api-key";
     } else if (params.opts.tokenProvider === "zai") {
       authChoice = "zai-api-key";
     } else if (params.opts.tokenProvider === "xiaomi") {
@@ -634,6 +640,83 @@ export async function applyAuthChoiceApiProviders(
         applyDefaultConfig: applyOpencodeZenConfig,
         applyProviderConfig: applyOpencodeZenProviderConfig,
         noteDefault: OPENCODE_ZEN_DEFAULT_MODEL,
+        noteAgentModel,
+        prompter: params.prompter,
+      });
+      nextConfig = applied.config;
+      agentModelOverride = applied.agentModelOverride ?? agentModelOverride;
+    }
+    return { config: nextConfig, agentModelOverride };
+  }
+
+  if (authChoice === "google-proxy-api-key") {
+    let hasCredential = false;
+    let baseUrl: string | undefined;
+
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "google-proxy") {
+      await setGoogleProxyApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
+      hasCredential = true;
+    }
+
+    if (!hasCredential) {
+      await params.prompter.note(
+        [
+          "Google Proxy allows you to use self-hosted Gemini endpoints.",
+          "You'll need both an API key and a custom base URL.",
+        ].join("\n"),
+        "Google Proxy",
+      );
+    }
+
+    const envKey = resolveEnvApiKey("google-proxy");
+    if (envKey) {
+      const useExisting = await params.prompter.confirm({
+        message: `Use existing GOOGLE_PROXY_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
+        initialValue: true,
+      });
+      if (useExisting) {
+        await setGoogleProxyApiKey(envKey.apiKey, params.agentDir);
+        hasCredential = true;
+      }
+    }
+
+    if (!hasCredential) {
+      const key = await params.prompter.text({
+        message: "Enter Google Proxy API key",
+        validate: validateApiKeyInput,
+      });
+      await setGoogleProxyApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+    }
+
+    // Prompt for base URL
+    const baseUrlInput = await params.prompter.text({
+      message: "Enter Google Proxy base URL",
+      placeholder: "https://your-proxy.example.com/v1",
+      validate: (value) => {
+        if (!value?.trim()) return "Base URL is required";
+        try {
+          new URL(value.trim());
+          return undefined;
+        } catch {
+          return "Invalid URL format";
+        }
+      },
+    });
+    baseUrl = String(baseUrlInput).trim();
+
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "google-proxy:default",
+      provider: "google-proxy",
+      mode: "api_key",
+    });
+    {
+      const applied = await applyDefaultModelChoice({
+        config: nextConfig,
+        setDefaultModel: params.setDefaultModel,
+        defaultModel: GOOGLE_PROXY_DEFAULT_MODEL_REF,
+        applyDefaultConfig: (config) => applyGoogleProxyConfig(config, baseUrl!),
+        applyProviderConfig: (config) => applyGoogleProxyProviderConfig(config, baseUrl!),
+        noteDefault: GOOGLE_PROXY_DEFAULT_MODEL_REF,
         noteAgentModel,
         prompter: params.prompter,
       });
