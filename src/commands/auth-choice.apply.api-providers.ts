@@ -1,3 +1,4 @@
+import type { ApplyAuthChoiceParams, ApplyAuthChoiceResult } from "./auth-choice.apply.js";
 import { ensureAuthProfileStore, resolveAuthProfileOrder } from "../agents/auth-profiles.js";
 import { resolveEnvApiKey } from "../agents/model-auth.js";
 import {
@@ -5,7 +6,6 @@ import {
   normalizeApiKeyInput,
   validateApiKeyInput,
 } from "./auth-choice.api-key.js";
-import type { ApplyAuthChoiceParams, ApplyAuthChoiceResult } from "./auth-choice.apply.js";
 import { applyDefaultModelChoice } from "./auth-choice.default-model.js";
 import {
   applyGoogleGeminiModelDefault,
@@ -42,7 +42,7 @@ import {
   XIAOMI_DEFAULT_MODEL_REF,
   setGeminiApiKey,
   setGoogleProxyApiKey,
-  setKimiCodeApiKey,
+  setKimiCodingApiKey,
   setMoonshotApiKey,
   setOpencodeZenApiKey,
   setOpenrouterApiKey,
@@ -280,7 +280,7 @@ export async function applyAuthChoiceApiProviders(
   if (authChoice === "kimi-code-api-key") {
     let hasCredential = false;
     if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "kimi-code") {
-      await setKimiCodeApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
+      await setKimiCodingApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -300,7 +300,7 @@ export async function applyAuthChoiceApiProviders(
         initialValue: true,
       });
       if (useExisting) {
-        await setKimiCodeApiKey(envKey.apiKey, params.agentDir);
+        await setKimiCodingApiKey(envKey.apiKey, params.agentDir);
         hasCredential = true;
       }
     }
@@ -309,7 +309,7 @@ export async function applyAuthChoiceApiProviders(
         message: "Enter Kimi Code API key",
         validate: validateApiKeyInput,
       });
-      await setKimiCodeApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+      await setKimiCodingApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
     }
     nextConfig = applyAuthProfileConfig(nextConfig, {
       profileId: "kimi-code:default",

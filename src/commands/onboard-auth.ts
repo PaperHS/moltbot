@@ -42,7 +42,7 @@ export {
   setAnthropicApiKey,
   setGeminiApiKey,
   setGoogleProxyApiKey,
-  setKimiCodeApiKey,
+  setKimiCodingApiKey,
   setMinimaxApiKey,
   setMoonshotApiKey,
   setOpencodeZenApiKey,
