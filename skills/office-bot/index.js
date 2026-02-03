@@ -7,13 +7,46 @@
  */
 
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 // Configuration
 const API_BASE = process.env.OFFICE_API_BASE || 'http://localhost:3001';
 const API_KEY = process.env.OFFICE_API_KEY || 'openclaw-default-key';
 
+// State file
+const STATE_FILE = path.join(os.homedir(), '.openclaw', 'skills', 'office-bot', '.state.json');
+
+// Load state
+function loadState() {
+  try {
+    if (fs.existsSync(STATE_FILE)) {
+      const data = fs.readFileSync(STATE_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    // Ignore errors, return default state
+  }
+  return { currentBotId: null };
+}
+
+// Save state
+function saveState(state) {
+  try {
+    const dir = path.dirname(STATE_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  } catch (err) {
+    console.error('Warning: Failed to save state:', err.message);
+  }
+}
+
 // State
-let currentBotId = null;
+let state = loadState();
+let currentBotId = state.currentBotId;
 
 // HTTP Request Helper
 function apiRequest(method, path, body = null) {
@@ -83,6 +116,7 @@ async function handleBind(botId) {
   try {
     const result = await apiRequest('POST', `/api/bots/${botId}/bind`, { clawId: 'openclaw' });
     currentBotId = botId;
+    saveState({ currentBotId: botId });
     return `✅ Bound to **${result.bot.name}**`;
   } catch (err) {
     return `❌ ${err.message}`;
@@ -98,6 +132,7 @@ async function handleUnbind() {
     await apiRequest('POST', `/api/bots/${currentBotId}/unbind`);
     const botId = currentBotId;
     currentBotId = null;
+    saveState({ currentBotId: null });
     return `👋 Unbound from ${botId}`;
   } catch (err) {
     return `❌ ${err.message}`;
