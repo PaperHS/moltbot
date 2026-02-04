@@ -81,10 +81,61 @@
 
 1. ✅ **已修复**: viewer更新bot时缺少target字段
 2. ✅ **已修复**: ws-server广播缺少target字段
-3. **待解决**: 当前只支持手动4方向移动，无寻路算法
+3. ✅ **已解决**: A*寻路算法已实现
+
+## Plugin Architecture (Phase 5)
+
+### Office Navigation Plugin
+
+**Location**: `.openclaw/plugins/office-navigation/`
+
+**Structure**:
+```
+office-navigation/
+├── package.json    # Plugin metadata
+├── index.js        # Hook registration and handlers
+└── README.md       # Documentation
+```
+
+**Hook Registration**:
+```javascript
+// Uses OpenClaw Plugin API
+export default function register(api) {
+  api.registerHook('message_received', handler, { register: true });
+  api.registerHook('message_sent', handler, { register: true });
+}
+```
+
+**Integration Flow**:
+```
+OpenClaw Gateway
+  ↓ loads plugin from .openclaw/plugins/
+OpenClaw Plugin API
+  ↓ api.registerHook(event, handler)
+Global Hook Runner
+  ↓ runMessageReceived() / runMessageSent()
+Plugin Handler
+  ↓ execAsync(`office-bot task-status`)
+Office Bot Skill
+  ↓ HTTP API call
+WebSocket Server
+  ↓ updates bot.taskStatus
+Auto-Navigate
+  ↓ detects status change
+Bot Movement
+```
+
+**Environment Variables**:
+- `OFFICE_BOT_ID`: Bot to control (pm, xm, coder, alvin)
+- `OFFICE_API_BASE`: WebSocket server URL
+- `OFFICE_API_KEY`: API authentication key
+- `OFFICE_BOT_SKILL`: (Optional) Skill command path
 
 ## Resources
 
 - Tiled Map Editor: https://www.mapeditor.org/
 - A* pathfinding算法参考
 - WebSocket协议文档
+- OpenClaw Plugin API: https://docs.openclaw.ai/plugin
+- OpenClaw Hooks: https://docs.openclaw.ai/hooks
+

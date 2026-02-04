@@ -96,7 +96,7 @@ taskStatus: {
 ```
 
 ### Phase 5: OpenClaw Agent集成
-**Status**: Ready to Implement
+**Status**: ✅ Completed
 **Goal**: 实现完整的工作流 - 接收任务→工位工作→完成后休息
 
 **核心工作流**：
@@ -110,16 +110,18 @@ taskStatus: {
 ```
 
 **Tasks**:
-- [ ] 创建message receive hook: 收到消息时设置working
-- [ ] 创建message send hook: 发送回复后设置idle
-- [ ] 添加配置: OFFICE_BOT_ID环境变量
-- [ ] 启动时自动bind bot并运行auto-navigate
+- [x] 创建message receive hook: 收到消息时设置working
+- [x] 创建message send hook: 发送回复后设置idle
+- [x] 添加配置: OFFICE_BOT_ID环境变量
+- [x] 启动时自动bind bot并运行auto-navigate
 - [ ] 测试完整workflow
 
-**实现要点**:
-- 在OpenClaw agent启动脚本中添加bot绑定
-- 使用后台进程运行auto-navigate
-- Message hooks调用office-bot skill设置状态
+**实现方案**:
+- 创建OpenClaw plugin: `.openclaw/plugins/office-navigation/`
+- 使用 `api.registerHook()` 注册 message_received 和 message_sent hooks
+- 通过子进程调用 office-bot skill 设置任务状态
+- 创建启动脚本: `scripts/start-office-navigation.sh`
+- 环境配置模板: `scripts/office-env.sh`
 
 ### Phase 6: 测试与优化
 **Status**: Not Started

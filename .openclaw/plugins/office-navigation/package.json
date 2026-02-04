@@ -1,0 +1,10 @@
+{
+  "name": "@openclaw/office-navigation",
+  "version": "0.1.0",
+  "description": "Office bot auto-navigation based on task status",
+  "type": "module",
+  "main": "index.js",
+  "openclaw": {
+    "kind": "plugin"
+  }
+}
