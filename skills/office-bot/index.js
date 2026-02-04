@@ -237,13 +237,32 @@ async function handleLocations() {
   }
 }
 
+async function handleGoto(location) {
+  if (!currentBotId) {
+    return "❌ Not bound to any bot. Use: /office-bot bind <bot-id>";
+  }
+
+  if (!location) {
+    return "❌ Usage: /office-bot goto <location>\n\nUse '/office-bot locations' to see available locations";
+  }
+
+  try {
+    const result = await apiRequest('POST', `/api/bots/${currentBotId}/goto`, { location });
+    return `🎯 **Navigating to ${location}**\n\n` +
+           `Path length: ${result.pathLength} tiles\n` +
+           `Target: (${result.target.x}, ${result.target.y})`;
+  } catch (err) {
+    return `❌ ${err.message}`;
+  }
+}
+
 // Main
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
   if (!command) {
-    console.log("❌ Usage: /office-bot <command> [args]\n\nCommands: list, bind, unbind, move, say, state, status, info, locations");
+    console.log("❌ Usage: /office-bot <command> [args]\n\nCommands: list, bind, unbind, move, say, state, status, info, locations, goto");
     process.exit(1);
   }
 
@@ -278,8 +297,11 @@ async function main() {
       case 'locations':
         response = await handleLocations();
         break;
+      case 'goto':
+        response = await handleGoto(args[1]);
+        break;
       default:
-        response = `❌ Unknown command: ${command}\n\nAvailable: list, bind, unbind, move, say, state, status, info, locations`;
+        response = `❌ Unknown command: ${command}\n\nAvailable: list, bind, unbind, move, say, state, status, info, locations, goto`;
     }
 
     console.log(response);
