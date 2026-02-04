@@ -210,13 +210,40 @@ async function handleStatus() {
   }
 }
 
+async function handleMapInfo() {
+  try {
+    const info = await apiRequest('GET', '/api/map/info');
+    return `🗺️  **Map Information**\n\n` +
+           `Size: ${info.width} x ${info.height} tiles\n` +
+           `Tile Size: ${info.tileSize}px\n` +
+           `Layers: ${info.layers.join(', ')}`;
+  } catch (err) {
+    return `❌ ${err.message}`;
+  }
+}
+
+async function handleLocations() {
+  try {
+    const result = await apiRequest('GET', '/api/map/locations');
+    let output = "📍 **Available Locations**\n\n";
+
+    Object.entries(result.locations).forEach(([key, loc]) => {
+      output += `**${key}**: ${loc.name} - Position (${loc.x}, ${loc.y})\n`;
+    });
+
+    return output;
+  } catch (err) {
+    return `❌ ${err.message}`;
+  }
+}
+
 // Main
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
   if (!command) {
-    console.log("❌ Usage: /office-bot <command> [args]\n\nCommands: list, bind, unbind, move, say, state, status");
+    console.log("❌ Usage: /office-bot <command> [args]\n\nCommands: list, bind, unbind, move, say, state, status, info, locations");
     process.exit(1);
   }
 
@@ -245,8 +272,14 @@ async function main() {
       case 'status':
         response = await handleStatus();
         break;
+      case 'info':
+        response = await handleMapInfo();
+        break;
+      case 'locations':
+        response = await handleLocations();
+        break;
       default:
-        response = `❌ Unknown command: ${command}\n\nAvailable: list, bind, unbind, move, say, state, status`;
+        response = `❌ Unknown command: ${command}\n\nAvailable: list, bind, unbind, move, say, state, status, info, locations`;
     }
 
     console.log(response);
