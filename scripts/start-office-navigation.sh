@@ -13,34 +13,54 @@
 
 set -euo pipefail
 
-# Check required environment variable
+# 1. Environment Validation
 if [ -z "${OFFICE_BOT_ID:-}" ]; then
   echo "❌ Error: OFFICE_BOT_ID environment variable not set"
   echo "   Please set it to your bot ID (pm, xm, coder, alvin)"
-  echo "   Example: export OFFICE_BOT_ID=pm"
   exit 1
 fi
 
-# Check if office-bot skill is available
-if ! command -v office-bot &> /dev/null; then
-  echo "❌ Error: office-bot command not found"
-  echo "   Make sure the office-bot skill is in your PATH"
+# 2. Skill Resolver
+# Try to find the best way to call the office-bot skill
+if [ -n "${OFFICE_BOT_SKILL:-}" ]; then
+  # Use provided override
+  SKILL_CMD="$OFFICE_BOT_SKILL"
+elif command -v office-bot &> /dev/null; then
+  # Use global command
+  SKILL_CMD="office-bot"
+elif [ -f "./skills/office-bot/index.js" ]; then
+  # Use local development path
+  SKILL_CMD="node ./skills/office-bot/index.js"
+else
+  echo "❌ Error: Could not find office-bot skill"
+  echo "   Tried: \$OFFICE_BOT_SKILL, 'office-bot' in PATH, and ./skills/office-bot/index.js"
+  echo "   Please set OFFICE_BOT_SKILL to the correct command/path"
   exit 1
 fi
+
+# 3. Execution Helper
+run_skill() {
+  # We use eval here to support multi-word commands in SKILL_CMD (e.g., "node index.js")
+  eval "$SKILL_CMD $1"
+}
 
 echo "🤖 Starting office navigation for bot: $OFFICE_BOT_ID"
+echo "🛠️  Using skill command: $SKILL_CMD"
 
-# Bind to the bot
+# 4. Initialization
 echo "🔗 Binding to bot..."
-office-bot bind "$OFFICE_BOT_ID"
+run_skill "bind $OFFICE_BOT_ID"
 
-# Set initial status to idle
 echo "☕ Setting initial status to idle..."
-office-bot task-status idle "Initialized"
+run_skill "task-status idle 'Initialized via script'"
 
-# Start auto-navigate in background
+# 5. Background Navigation Loop
+# Ensure logs directory exists
+mkdir -p ~/.openclaw/logs
+
 echo "🗺️  Starting auto-navigate (30 second interval)..."
-nohup office-bot auto-navigate 30 > ~/.openclaw/logs/auto-navigate-${OFFICE_BOT_ID}.log 2>&1 &
+# We need to run the background process using the same skill command
+nohup bash -c "$SKILL_CMD auto-navigate 30" > ~/.openclaw/logs/auto-navigate-${OFFICE_BOT_ID}.log 2>&1 &
 AUTO_NAV_PID=$!
 
 echo "✅ Office navigation started!"

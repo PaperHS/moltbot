@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+node /Volumes/extStorage/workspace/llm/clawdbot/skills/office-bot/index.js "$@"

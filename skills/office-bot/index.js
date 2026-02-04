@@ -6,10 +6,10 @@
  * Connects to WebSocket server to control WorkAdventure bots
  */
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 
 // Configuration
 const API_BASE = process.env.OFFICE_API_BASE || 'http://localhost:3001';
