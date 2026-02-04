@@ -256,13 +256,68 @@ async function handleGoto(location) {
   }
 }
 
+async function handleSetTaskStatus(status, ...descriptionWords) {
+  if (!currentBotId) {
+    return "❌ Not bound to any bot. Use: /office-bot bind <bot-id>";
+  }
+
+  if (!status) {
+    return "❌ Usage: /office-bot task-status <idle|working> [description]\n\nExamples:\n  /office-bot task-status idle\n  /office-bot task-status working Processing user request";
+  }
+
+  if (!['idle', 'working'].includes(status)) {
+    return "❌ Invalid status. Use 'idle' or 'working'";
+  }
+
+  try {
+    const description = descriptionWords.join(' ');
+    const result = await apiRequest('POST', `/api/bots/${currentBotId}/task-status`, {
+      status,
+      description
+    });
+
+    const icons = { idle: '☕', working: '💼' };
+    let output = `${icons[status]} **Task status updated: ${status}**\n\n`;
+    if (description) {
+      output += `Description: ${description}\n`;
+    }
+    output += `Updated: ${new Date(result.taskStatus.lastUpdate).toLocaleTimeString()}`;
+
+    return output;
+  } catch (err) {
+    return `❌ ${err.message}`;
+  }
+}
+
+async function handleGetTaskStatus() {
+  if (!currentBotId) {
+    return "❌ Not bound to any bot. Use: /office-bot bind <bot-id>";
+  }
+
+  try {
+    const result = await apiRequest('GET', `/api/bots/${currentBotId}/task-status`);
+    const status = result.taskStatus;
+    const icons = { idle: '☕', working: '💼' };
+
+    let output = `${icons[status.status]} **Current task status: ${status.status}**\n\n`;
+    if (status.description) {
+      output += `Description: ${status.description}\n`;
+    }
+    output += `Last updated: ${new Date(status.lastUpdate).toLocaleTimeString()}`;
+
+    return output;
+  } catch (err) {
+    return `❌ ${err.message}`;
+  }
+}
+
 // Main
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
   if (!command) {
-    console.log("❌ Usage: /office-bot <command> [args]\n\nCommands: list, bind, unbind, move, say, state, status, info, locations, goto");
+    console.log("❌ Usage: /office-bot <command> [args]\n\nCommands: list, bind, unbind, move, say, state, status, info, locations, goto, task-status, get-task-status");
     process.exit(1);
   }
 
@@ -300,8 +355,14 @@ async function main() {
       case 'goto':
         response = await handleGoto(args[1]);
         break;
+      case 'task-status':
+        response = await handleSetTaskStatus(args[1], ...args.slice(2));
+        break;
+      case 'get-task-status':
+        response = await handleGetTaskStatus();
+        break;
       default:
-        response = `❌ Unknown command: ${command}\n\nAvailable: list, bind, unbind, move, say, state, status, info, locations, goto`;
+        response = `❌ Unknown command: ${command}\n\nAvailable: list, bind, unbind, move, say, state, status, info, locations, goto, task-status, get-task-status`;
     }
 
     console.log(response);
