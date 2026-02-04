@@ -96,14 +96,30 @@ taskStatus: {
 ```
 
 ### Phase 5: OpenClaw Agent集成
-**Status**: Not Started
-**Goal**: 让OpenClaw agent自动设置任务状态
+**Status**: Ready to Implement
+**Goal**: 实现完整的工作流 - 接收任务→工位工作→完成后休息
+
+**核心工作流**：
+```
+1. Boss/其他bot通过Telegram/Feishu发送任务 → 当前bot
+2. Bot收到消息 → 自动设置status=working → 导航到工位
+3. Agent在工位处理任务
+4. 处理完成 → 发送结果到channel
+5. 自动设置status=idle → 导航到茶水间休息
+6. 循环等待下一个任务
+```
 
 **Tasks**:
-- [ ] 在agent开始处理用户请求时: `set-task-status working "正在处理用户请求"`
-- [ ] 在agent空闲时: `set-task-status idle`
-- [ ] Hook集成到agent生命周期
+- [ ] 创建message receive hook: 收到消息时设置working
+- [ ] 创建message send hook: 发送回复后设置idle
+- [ ] 添加配置: OFFICE_BOT_ID环境变量
+- [ ] 启动时自动bind bot并运行auto-navigate
 - [ ] 测试完整workflow
+
+**实现要点**:
+- 在OpenClaw agent启动脚本中添加bot绑定
+- 使用后台进程运行auto-navigate
+- Message hooks调用office-bot skill设置状态
 
 ### Phase 6: 测试与优化
 **Status**: Not Started

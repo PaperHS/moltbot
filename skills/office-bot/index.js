@@ -311,13 +311,85 @@ async function handleGetTaskStatus() {
   }
 }
 
+async function handleAutoNavigate(intervalSeconds) {
+  if (!currentBotId) {
+    return "❌ Not bound to any bot. Use: /office-bot bind <bot-id>";
+  }
+
+  const interval = parseInt(intervalSeconds) || 30;
+
+  if (interval < 5 || interval > 300) {
+    return "❌ Interval must be between 5 and 300 seconds";
+  }
+
+  console.log(`🤖 **Auto-navigate started for ${currentBotId}**\n`);
+  console.log(`Check interval: ${interval} seconds`);
+  console.log(`Logic: idle → pantry, working → desk_${currentBotId}`);
+  console.log(`\nPress Ctrl+C to stop\n`);
+
+  let lastStatus = null;
+  let lastLocation = null;
+
+  const checkAndNavigate = async () => {
+    try {
+      // Get current task status
+      const statusResult = await apiRequest('GET', `/api/bots/${currentBotId}/task-status`);
+      const currentStatus = statusResult.taskStatus.status;
+
+      // Determine target location
+      let targetLocation;
+      if (currentStatus === 'idle') {
+        targetLocation = 'pantry';
+      } else if (currentStatus === 'working') {
+        targetLocation = `desk_${currentBotId}`;
+      }
+
+      // Only navigate if status or target changed
+      if (currentStatus !== lastStatus || targetLocation !== lastLocation) {
+        const timestamp = new Date().toLocaleTimeString();
+        console.log(`[${timestamp}] Status: ${currentStatus} → Navigating to ${targetLocation}`);
+
+        try {
+          const gotoResult = await apiRequest('POST', `/api/bots/${currentBotId}/goto`, {
+            location: targetLocation
+          });
+          console.log(`  ✅ Path found (${gotoResult.pathLength} tiles)`);
+        } catch (err) {
+          console.log(`  ❌ Navigation failed: ${err.message}`);
+        }
+
+        lastStatus = currentStatus;
+        lastLocation = targetLocation;
+      }
+    } catch (err) {
+      console.error(`❌ Error: ${err.message}`);
+    }
+  };
+
+  // Initial check
+  await checkAndNavigate();
+
+  // Set up interval
+  const timer = setInterval(checkAndNavigate, interval * 1000);
+
+  // Handle Ctrl+C
+  process.on('SIGINT', () => {
+    clearInterval(timer);
+    console.log('\n\n🛑 Auto-navigate stopped');
+    process.exit(0);
+  });
+
+  // Keep process alive
+  return new Promise(() => {}); // Never resolves, runs until Ctrl+C
+}
+
 // Main
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
   if (!command) {
-    console.log("❌ Usage: /office-bot <command> [args]\n\nCommands: list, bind, unbind, move, say, state, status, info, locations, goto, task-status, get-task-status");
+    console.log("❌ Usage: /office-bot <command> [args]\n\nCommands:\n  Bot Control: list, bind, unbind, move, goto, say, state\n  Status: status, get-task-status\n  Map: info, locations\n  Task Management: task-status, auto-navigate");
     process.exit(1);
   }
 
@@ -361,8 +433,11 @@ async function main() {
       case 'get-task-status':
         response = await handleGetTaskStatus();
         break;
+      case 'auto-navigate':
+        response = await handleAutoNavigate(args[1]);
+        break;
       default:
-        response = `❌ Unknown command: ${command}\n\nAvailable: list, bind, unbind, move, say, state, status, info, locations, goto, task-status, get-task-status`;
+        response = `❌ Unknown command: ${command}\n\nUse '/office-bot' without arguments to see all commands`;
     }
 
     console.log(response);
