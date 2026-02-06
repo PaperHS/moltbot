@@ -1,0 +1,22 @@
+{
+  "name": "@openclaw/office-bot",
+  "version": "1.0.0",
+  "description": "OpenClaw extension for WorkAdventure Office integration",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "openclaw": "workspace:*",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "openclaw": "workspace:*"
+  }
+}

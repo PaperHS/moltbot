@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <title>Office Viewer (Active)</title>
+    <style>
+        body { margin: 0; background: #202020; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        canvas { image-rendering: pixelated; box-shadow: 0 0 20px black; }
+        #loading { color: white; font-family: sans-serif; position: absolute; top: 20px; left: 20px; }
+        #status { position: absolute; bottom: 20px; left: 20px; color: #4ade80; font-family: monospace; background: rgba(0,0,0,0.5); padding: 5px; }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading Map...</div>
+    <div id="status">System Ready</div>
+    <canvas id="mapCanvas"></canvas>
+
+    <script>
+        // --- 1. MOCK WorkAdventure API (Simulating the Engine) ---
+        const visibleLayers = new Set(); // Tracks explicitly hidden/shown layers
+        const hiddenLayers = new Set();
+
+        window.WA = {
+            room: {
+                showLayer: (name) => {
+                    hiddenLayers.delete(name);
+                    visibleLayers.add(name);
+                    renderMap(); // Re-render on change
+                },
+                hideLayer: (name) => {
+                    visibleLayers.delete(name);
+                    hiddenLayers.add(name);
+                    renderMap();
+                }
+            },
+            onInit: () => Promise.resolve()
+        };
+
+        // --- 2. BOT LOGIC (Embedded for Local Preview) ---
+        const bots = [
+            { id: "pm", layers: { desk: "Bot_PM_Desk", pantry: "Bot_PM_Pantry" } },
+            { id: "xm", layers: { desk: "Bot_XM_Desk", pantry: "Bot_XM_Pantry" } },
+            { id: "coder", layers: { desk: "Bot_Coder_Desk", pantry: "Bot_Coder_Pantry" } },
+            { id: "alvin", layers: { desk: "Bot_Alvin_Desk", pantry: "Bot_Alvin_Pantry" } }
+        ];
+
+        function simulateBotStates() {
+            console.log("🤖 Simulating Bots...");
+            const statusDiv = document.getElementById('status');
+            let statusText = [];
+
+            bots.forEach(bot => {
+                const rand = Math.random();
+                if (rand < 0.2) {
+                    WA.room.hideLayer(bot.layers.desk);
+                    WA.room.hideLayer(bot.layers.pantry);
+                    statusText.push(`${bot.id}: 🔴`);
+                } else if (rand < 0.6) {
+                    WA.room.showLayer(bot.layers.desk);
+                    WA.room.hideLayer(bot.layers.pantry);
+                    statusText.push(`${bot.id}: 💻`);
+                } else {
+                    WA.room.hideLayer(bot.layers.desk);
+                    WA.room.showLayer(bot.layers.pantry);
+                    statusText.push(`${bot.id}: ☕`);
+                }
+            });
+            statusDiv.innerText = "Active: " + statusText.join(" | ");
+        }
+
+        // --- 3. RENDERING ENGINE ---
+        const canvas = document.getElementById('mapCanvas');
+        const ctx = canvas.getContext('2d');
+        let mapData = null;
+        let tilesets = [];
+
+        window.onload = loadMap;
+
+        async function loadMap() {
+            try {
+                // Prevent caching
+                const res = await fetch('office.tmj?' + Date.now());
+                mapData = await res.json();
+                
+                // Load Tilesets
+                for(const ts of mapData.tilesets) {
+                    // CASE A: Standard Tileset (One big image)
+                    if (ts.image) {
+                        await loadStandardTileset(ts);
+                    } 
+                    // CASE B: Collection of Images (Multiple small images)
+                    else if (ts.tiles) {
+                        await loadCollectionTileset(ts);
+                    }
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                // Start Simulation
+                simulateBotStates();
+                setInterval(simulateBotStates, 3000); // Fast update for demo
+                
+                renderMap();
+                window.addEventListener('resize', renderMap);
+            } catch(e) {
+                document.getElementById('loading').innerText = "Error: " + e;
+                console.error(e);
+            }
+        }
+
+        async function loadStandardTileset(ts) {
+            const img = new Image();
+            let src = ts.image.replace(/^(\.\.\/)+/, '');
+            img.src = src;
+            await new Promise(r => { img.onload = r; img.onerror = r; });
+            tilesets.push({ type: 'standard', ...ts, imgElem: img });
+        }
+
+        async function loadCollectionTileset(ts) {
+            const tilesObj = {};
+            const promises = [];
+            
+            for (const [id, tileData] of Object.entries(ts.tiles)) {
+                const img = new Image();
+                let src = tileData.image.replace(/^(\.\.\/)+/, '');
+                // Fix: Tiled saves relative to .tmj, sometimes deep
+                if (!src.startsWith('assets') && !src.startsWith('public')) {
+                     // Try to guess? Or just use as is. 
+                     // Usually it's "public/characters/Alvin.png" -> "characters/Alvin.png"
+                }
+                img.src = src;
+                promises.push(new Promise(r => { 
+                    img.onload = () => {
+                        tilesObj[id] = { img, width: tileData.imagewidth, height: tileData.imageheight };
+                        r();
+                    };
+                    img.onerror = () => {
+                        console.warn("Failed:", src);
+                        r();
+                    };
+                }));
+            }
+            await Promise.all(promises);
+            tilesets.push({ type: 'collection', firstgid: ts.firstgid, tiles: tilesObj });
+        }
+
+        function getTile(gid) {
+            for(let i=tilesets.length-1; i>=0; i--) {
+                const ts = tilesets[i];
+                if(gid >= ts.firstgid) {
+                    if (ts.type === 'standard') {
+                        // Standard logic
+                        const localId = gid - ts.firstgid;
+                        if (localId >= ts.tilecount) continue; // Out of bounds check
+                        const col = localId % ts.columns;
+                        const row = Math.floor(localId / ts.columns);
+                        return { 
+                            img: ts.imgElem, 
+                            sx: col * ts.tilewidth, sy: row * ts.tileheight,
+                            w: ts.tilewidth, h: ts.tileheight
+                        };
+                    } else {
+                        // Collection logic
+                        const localId = gid - ts.firstgid;
+                        const t = ts.tiles[localId];
+                        if (t) {
+                            return { img: t.img, sx: 0, sy: 0, w: t.width, h: t.height };
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function renderMap() {
+            if(!mapData) return;
+            
+            const scale = Math.min(window.innerWidth / (mapData.width * 32), window.innerHeight / (mapData.height * 32)) * 0.9;
+            canvas.width = mapData.width * 32;
+            canvas.height = mapData.height * 32;
+            canvas.style.width = (canvas.width * scale) + 'px';
+            canvas.style.height = (canvas.height * scale) + 'px';
+            
+            ctx.fillStyle = '#202020';
+            ctx.fillRect(0,0,canvas.width, canvas.height);
+            
+            // Draw Groups and Layers
+            mapData.layers.forEach(layer => drawLayerRecursive(layer));
+        }
+
+        function drawLayerRecursive(layer) {
+            // Visibility Check (Logic override -> Tiled setting)
+            let isVisible = layer.visible;
+            if (hiddenLayers.has(layer.name)) isVisible = false;
+            if (visibleLayers.has(layer.name)) isVisible = true;
+
+            if (!isVisible) return;
+
+            if (layer.type === 'group') {
+                if(layer.layers) layer.layers.forEach(l => drawLayerRecursive(l));
+            } else if (layer.type === 'tilelayer') {
+                layer.data.forEach((gid, idx) => {
+                    if(gid === 0) return;
+                    const c = idx % mapData.width;
+                    const r = Math.floor(idx / mapData.width);
+                    
+                    // Draw Tile
+                    const t = getTile(gid);
+                    if(t && t.img) {
+                        // Center/Bottom align adjustment for objects larger than tile?
+                        // Tiled draws bottom-left aligned usually for objects, but tile layers are grid aligned.
+                        // Standard tiles are 32x32.
+                        let drawY = r * 32;
+                        // Correction for tall sprites if needed, but standard tilelayers align to grid top-left usually
+                        // UNLESS logic demands offset. Keep simple for now.
+                        ctx.drawImage(t.img, t.sx, t.sy, t.w, t.h, c*32, drawY - (t.h - 32), t.w, t.h);
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

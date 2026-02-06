@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <title>Office Viewer (Realtime)</title>
+    <style>
+        body { margin: 0; background: #202020; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        canvas { image-rendering: pixelated; box-shadow: 0 0 20px black; }
+        #loading { color: white; font-family: sans-serif; position: absolute; top: 20px; left: 20px; }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading Map...</div>
+    <canvas id="mapCanvas"></canvas>
+    <script src="viewer.js"></script>
+</body>
+</html>

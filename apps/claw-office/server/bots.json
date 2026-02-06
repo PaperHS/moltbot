@@ -1,0 +1,40 @@
+{
+  "test-bot-1": {
+    "id": "test-bot-1",
+    "character": "coder",
+    "name": "测试机器人1",
+    "createdAt": 1770114852423,
+    "lastPosition": {
+      "x": 9,
+      "y": 19
+    },
+    "lastSeen": 1770114945970
+  },
+  "test-bot-2": {
+    "id": "test-bot-2",
+    "character": "alvin",
+    "name": "测试机器人2",
+    "createdAt": 1770114896817,
+    "lastPosition": {
+      "x": 9,
+      "y": 19
+    },
+    "lastSeen": 1770114896817
+  },
+  "pm": {
+    "id": "pm",
+    "character": "xm",
+    "name": "pm",
+    "createdAt": 1770116534193,
+    "lastPosition": {
+      "x": 23.864154428842316,
+      "y": 5.023019780394324
+    },
+    "lastSeen": 1770197394054,
+    "taskStatus": {
+      "status": "idle",
+      "description": "Initialized via script",
+      "lastUpdate": 1770197394053
+    }
+  }
+}
