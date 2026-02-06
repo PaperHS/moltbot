@@ -118,6 +118,51 @@
         }
         break;
 
+      case 'system_announcement':
+        if (window.WA) {
+            // Display as a bubble or notification via WorkAdventure API
+            window.WA.ui.displayBubble(); // This is just a guess, we need proper API call
+            // Since this runs in the map script context ideally, but here we are in a script loaded by index.html?
+            // Actually this file is loaded by the map script OR index.html.
+            // Let's assume we can use WA.chat.sendChatMessage if available, or console.
+            console.log(`📢 SYSTEM: ${message.message}`);
+
+            // If we are in the iframe, we might have access to WA
+            if (window.WA && window.WA.chat) {
+                window.WA.chat.sendChatMessage(`📢 ${message.message}`, 'System');
+            }
+
+            // Also show a popup if available
+            if (window.WA && window.WA.ui && window.WA.ui.displayBubble) {
+               // window.WA.ui.displayBubble();
+            }
+
+            // Fallback: visual indication on all bots?
+            // Or just alert if dev mode
+            // alert(`📢 ${message.message}`);
+
+            // Better: use the existing 'speech' mechanism on a "System" bot if it existed,
+            // or just broadcast to all local bots to say it? No that's weird.
+
+            // Let's inject a toast into the DOM since this is a custom frontend
+            const toast = document.createElement('div');
+            toast.style.position = 'fixed';
+            toast.style.top = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.background = 'rgba(0, 0, 0, 0.8)';
+            toast.style.color = 'white';
+            toast.style.padding = '10px 20px';
+            toast.style.borderRadius = '20px';
+            toast.style.zIndex = '9999';
+            toast.style.fontSize = '16px';
+            toast.style.fontWeight = 'bold';
+            toast.innerText = `📢 ${message.message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), message.duration || 5000);
+        }
+        break;
+
       case 'bot_move':
         if (window.clawControl) {
           const bot = window.clawControl._getBotById?.(message.bot.id);
