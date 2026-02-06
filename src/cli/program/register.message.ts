@@ -10,6 +10,7 @@ import {
   registerMessageEmojiCommands,
   registerMessageStickerCommands,
 } from "./message/register.emoji-sticker.js";
+import { registerOfficeCommands } from "./message/register.office.js";
 import {
   registerMessagePermissionsCommand,
   registerMessageSearchCommand,
@@ -65,4 +66,5 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/message", "docs.openclaw.ai/cli/m
   registerMessageEmojiCommands(message, helpers);
   registerMessageStickerCommands(message, helpers);
   registerMessageDiscordAdminCommands(message, helpers);
+  registerOfficeCommands(message, helpers);
 }
