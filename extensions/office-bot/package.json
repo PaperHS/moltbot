@@ -4,6 +4,14 @@
   "description": "OpenClaw extension for WorkAdventure Office integration",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "openclaw": {
+    "channel": {
+      "id": "office",
+      "label": "Claw Office",
+      "description": "Integration with WorkAdventure Office",
+      "systemImage": "building_2"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc -w"

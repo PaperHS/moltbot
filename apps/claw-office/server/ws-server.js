@@ -562,9 +562,26 @@ app.post('/api/bots/:id/state', verifyApiKey, (req, res) => {
   res.json({ ok: true, state });
 });
 
-// Make bot say something
+// Make bot say something (broadcast)
 app.post('/api/bots/:id/say', verifyApiKey, (req, res) => {
-  const bot = getBotById(req.params.id);
+  const botId = req.params.id;
+
+  // Special handling for "group_all" broadcast from system
+  if (botId === 'system' || botId === 'group_all') {
+      const message = req.body.message;
+      const duration = req.body.duration || 5000;
+
+      if (!message) return res.status(400).json({ error: 'Message required' });
+
+      broadcastToClients({
+          type: 'system_announcement',
+          message,
+          duration
+      });
+      return res.json({ ok: true, message });
+  }
+
+  const bot = getBotById(botId);
   if (!bot) {
     return res.status(404).json({ error: 'Bot not found' });
   }

@@ -3,6 +3,10 @@ import * as path from 'path';
 import * as os from 'os';
 import axios from 'axios';
 import type { OpenClawPluginApi, ReplyPayload } from 'openclaw/plugin-sdk';
+import { officeChannel } from './channel.js';
+
+// Export channel plugin for OpenClaw registry
+export const channel = officeChannel;
 
 // Configuration
 const OFFICE_API_BASE = process.env.OFFICE_API_BASE || 'http://localhost:3001';
